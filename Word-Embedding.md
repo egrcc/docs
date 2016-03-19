@@ -38,7 +38,7 @@ $$
  
 #### 2. Neural Probabilistic Language Model ($\small \text{Bengio et al. NIPS 2001}$)
 
-<p style="text-align:center"><img src="./4.png" height="500" width="573" /></p>
+<p style="text-align:center"><img src="./nplm.png" height="500" width="573" /></p>
 
 </br>
 **input**: $w_{t-n+1}, …, w_{t-2}, w_{t-1}$
