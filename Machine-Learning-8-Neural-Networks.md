@@ -109,3 +109,29 @@ $$
 &\frac{\partial C}{\partial w^l} = \delta^l \cdot (a^{l-1})^T \quad (\text{need } a^{l-1}; l=L, L-1,\ldots, 2)
 \end{aligned}
 $$
+
+### 4. The Vanishing Gradient Problem
+
+**the simplest deep neural network**:
+</br>
+</br>
+<p style="text-align:center"><img src="./tikz37.png"/>
+</br>
+</br>
+
+**the expression for $\frac{\partial C}{\partial b^l}$**:
+</br>
+</br>
+<p style="text-align:center"><img src="./tikz38.png"/>
+</br>
+</br>
+
+**approaches to overcome the problem**:
+
+- Usage of GPU
+- Usage of better activation functions
+
+### Reference
+
+1. Michael Nielsen. Neural Networks and Deep Learning.
+http://neuralnetworksanddeeplearning.com/
