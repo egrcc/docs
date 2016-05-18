@@ -1,0 +1,1210 @@
+\documentclass[12pt,a4paper]{article}
+
+\usepackage{fontspec,xunicode,xltxtra}
+\usepackage{titlesec}
+\usepackage{hyperref}
+\usepackage[noadjust]{cite}
+%\usepackage{amsfonts}
+%\usepackage{graphicx}
+%\usepackage{amsmath}
+%\usepackage{amssymb}
+%\usepackage{amsthm}
+\usepackage{newpxmath}
+\usepackage{bm}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usepackage{verbatim}
+\usepackage{pgfplots}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+%\usepackage[bottom]{footmisc}
+\usepackage[top=1in,bottom=1in,left=1.05in,right=1.05in]{geometry}
+\usetikzlibrary{shapes.arrows}
+
+\titleformat{\section}{\Large\hei}{\thesection}{1em}{}
+\titleformat{\subsection}{\large\hei}{\thesubsection}{1em}{}
+
+\XeTeXlinebreaklocale "zh"
+\XeTeXlinebreakskip = 0pt plus 1pt minus 0.1pt
+
+\newfontfamily\song{SimSun}
+\newfontfamily\kai{KaiTi}
+\newfontfamily\hei{SimHei}
+\newfontfamily\lishu{LiSu}
+\newfontfamily\siyuan{Source Han Sans CN}
+\newfontfamily\yahei{Microsoft YaHei}
+\newfontfamily\fsong{FangSong}
+\newfontfamily\FZLTKsong{FZLanTingKanSongK}
+\newfontfamily\FZLTsong{FZLanTingSong}
+\newfontfamily\FZhei{FZHei-B01S}
+\newfontfamily\FZzdx{FZZhongDengXian-Z07S}
+\newfontfamily\sursong{Simsun (Founder Extended)}
+\newfontfamily\FZkai{FZKai-Z03S}
+\newfontfamily\FZshusong{FZShuSong-Z01S}
+\newfontfamily\FZfangsong{FZFangSong-Z02S}
+\newfontfamily\cardo{Cardo}
+\newfontfamily\crimson{Crimson Text}
+\newfontfamily\roman{Times New Roman}
+%\newfontfamily\garamond{AGaramondExp}
+
+\setmainfont{SimSun}
+
+\renewcommand{\baselinestretch}{1.5}
+\renewcommand\abstractname{}
+\renewcommand\refname{参考文献}
+\floatname{algorithm}{\hei 算法}
+%\renewcommand{\algorithmicrequire}{\hei 输入}
+%\renewcommand{\algorithmcfname}{算法}
+\renewcommand{\citedash}{-} 
+\renewcommand\figurename{\hei 图}
+\renewcommand{\theequation}{\kai \arabic{equation}}
+\makeatletter
+\renewcommand\@biblabel[1]{\kai [#1]}
+\makeatother
+
+\setlength{\parskip}{1em}
+\pgfplotsset{grid style={dashed,gray}}
+\tikzset{every loop/.style={min distance=10mm,in=-45,out=45,looseness=10}}
+
+\begin{document}
+
+\title{\hei 深度学习中的循环神经网络}
+\author{\FZzdx 赵露君}
+\date{\kai 2016年5月20日}
+
+\maketitle
+
+\begin{abstract}
+\noindent {\hei 摘要}\quad\kai 让计算机具备智能是人们一直以来追求的目标，而近年来深度学习的发展让人们看到了希望。深度学习发源于机器学习中的神经网络，随着计算机计算能力的提升及数据量的增长，深度学习在计算机视觉与自然语言处理等领域取得了巨大的成功。而循环神经网络是其中一种适用于序列到序列学习的网络。本文首先回顾了深度学习的历史，接着简要介绍了基本的人工神经网络，然后开始讨论循环神经网络及其一种强有力的变种：长短期记忆网络，为了解决序列到序列中的长期依赖问题，我们讨论了记忆机制与注意力机制，最后介绍了一些应用。
+
+\smallskip
+\noindent {\hei 关键字}：人工智能，深度学习，神经网络，循环神经网络
+\end{abstract}
+
+\section{简介}
+
+{\hei 人工智能}({\crimson Artificial Intelligence, AI})是学者们长期追求的目标。{\kai 1950}$\:$年，{\crimson Alan Turing} 提出了{\hei 图灵测试}({\crimson Turing Test}){\kai \cite{turing1950computing}}作为判断机器是否具有智能的标准。尽管有机器已经通过了图灵测试\footnote{\crimson AI with 13-year-old boy's personality wins top prize at world's biggest Turing test, \url{http://www.theverge.com/2012/6/27/3120135/eugene-goostman-ukrainian-boy-ai-turing-test}}，但我们离真正的智能还有一段距离。{\hei 机器学习}({\crimson Machine Learning})是一门人工智能的科学，该领域的主要研究对象是人工智能，特别是如何在经验学习中改善具体算法的性能\footnote{\hei 来自维基百科：\url{https://zh.wikipedia.org/wiki/\%E6\%9C\%BA\%E5\%99\%A8\%E5\%AD\%A6\%E4\%B9\%A0}}。{\hei 深度学习}({\crimson Deep Learning}){\kai \cite{lecun2015deep,Goodfellow2016Book}}发源于机器学习中的神经网络，在早期是指那些层数较多的神经网络，但随着近年来的快速发展，其涵义有了进一步的扩展。由于计算机计算能力的提升及数据量的巨大增长，深度学习在一些领域取得了巨大的成功，{\hei 阿尔法围棋}({\crimson AlphaGo}){\kai \cite{silver2016mastering}}就是其中一个例子。
+
+{\hei 人工神经网络}({\crimson Artificial Neural Network, ANN})，简称{\hei 神经网络}({\crimson Neural Network})，是指一种模仿大脑中神经系统的机器学习模型。每一层由一些{\hei 节点}({\crimson Node})构成，层与层之间的节点相互连接，从而构成了整个神经网络。神经网络最早的历史可以追溯到$\:${\kai 1958}$\:$年 {\crimson Rosenblatt} 提出的{\hei 感知机}({\crimson Perceptron}){\kai \cite{rosenblatt1958perceptron}}，感知机只有一个输入层和一个输出层，将输入值映射到$\:${\kai 0}$\:$或$\:${\kai 1}$\:$。由于感知机结构过于简单，甚至不能学会{\hei 异或}({\crimson XOR})函数，因而遭到了 {\crimson Marvin Minsky}  等人的质疑{\kai \cite{minsky1969perceptrons}}。实际上，神经网络可以看成是{\hei 多层感知机}({\crimson Multilayer Perceptron})，但是当时一直找不到有效的学习算法，导致神经网络的研究陷入了停滞。直到$\:${\kai 1986}$\:$年，由 {\crimson David Rumelhart}，{\crimson Geoffrey Hinton} 和 {\crimson Ronald Williams} 提出了{\hei 反向传播算法}({\crimson Backpropagation, BP}){\kai \cite{rumelhart1986learning}}，才解决了神经网络的学习问题，再一次引起了人们的注意。比如 {\crimson Yann LeCun} 等人用{\hei 卷积神经网络}({\crimson Convolutional Neural Network, CNN})将反向传播算法应用到了手写数字识别中{\kai \cite{lecun1989backpropagation}}。由于当时的计算机计算能力不足，导致无法训练大规模的神经网络，而随着其他一些算法如{\hei 支持向量机}({\crimson Support Vector Machine})的兴起，神经网络一个新的寒冬开始来临。
+
+{\hei 循环神经网络}({\crimson Recurrent Neural Network, RNN})是一种强有力的{\hei 序列模型}({\crimson Sequence Model})，可以将一个序列变为另一个序列。由于包含有自循环的隐藏层，循环神经网络因此得名。这个自循环的隐含层表征前一时间的输入也会对后面的输出产生影响，而在普通的神经网络中各个输入与输出之间是相互独立的。理论上，循环神经网络可以捕捉任意长时间的关联，但由于训练过程中的{\hei 梯度消失问题}({\crimson Vanishing Gradient Problem}){\kai \cite{hochreiter1991untersuchungen,bengio1993problem,bengio1994learning,hochreiter2001gradient}}，很深的循环神经网络很难用反向传播算法训练，导致普通的循环神经网络难以捕捉到长期的依赖。{\hei 长短期记忆网络}({\crimson Long-Short Term Memory, LSTM}){\kai \cite{hochreiter1997long}}是一种在$\:${\kai 1997}$\:$年由  {\crimson Hochreiter} 和 {\crimson Schmidhuber} 提出的特殊的循环神经网络，被设计用来解决长期依赖的问题。循环神经网络在{\hei 自然语言处理}({\crimson Natural Language Processing, NLP})的各个任务上有着非常广泛的应用。
+
+最近的深度学习浪潮开始于$\:${\kai 2006}$\:$年，{\hei 加拿大高级研究院}({\crimson  Canadian Institute for Advanced Research, CIFAR})的一些研究使深度神经网络再度进入人们的视野。由于{\hei 摩尔定律}({\crimson Moore's Law})，计算机的速度相对$\:${\kai 90}$\:$年代有了数十倍的提升，同时具有大规模并行计算能力的{\hei 图形处理器}({\crimson Graphics Processing Unit, GPU})的出现，使得计算能力相对于双核 {\crimson CPU} 有了近$\:${\kai 70}$\:$倍的提升{\kai \cite{raina2009large}}。{\crimson Hinton} 和他的两个学生，{\crimson Abdel-rahman Mohamed} 和 {\crimson George Dahl} 利用 {\crimson GPU} 训练的{\hei 深度信念网络}({\crimson Deep Belief Network, DBN})首先在{\hei 语音识别}({\crimson Speech Recognition})上取得进展{\kai \cite{mohamed2009deep}}。{\kai 2011}$\:$年，{\crimson  Andrew Ng} 和 {\crimson Jeff Dean} 开始了{\hei 谷歌大脑}({\crimson Google Brain})项目，利用谷歌庞大的计算资源来训练大规模深度神经网络。利用从 {\crimson YouTube} 上取来的$\:${\kai 1000}$\:$万张图像，训练神经网络辨识猫\footnote{\hei 可见于纽约时报对该事件的报道：\url{http://www.nytimes.com/2012/06/26/technology/in-a-big-network-of-computers-evidence-of-machine-learning.html}}。深度学习的高潮在$\:${\kai 2012}$\:$年到来。{\crimson Alex Krizhevsky}，{\crimson Ilya Sutskever} 与 {\crimson Hinton} 用卷积神经网络在{\hei 大规模视觉识别挑战赛}({\crimson Large Scale Visual Recognition Challenge, ILSVRC})上取得了高出第二名$\:${\kai 10}$\:$个百分点的成绩{\kai \cite{krizhevsky2012imagenet}}。在之后几年的 {\crimson ILSVRC} 中，深度学习一统天下。伴随着深度学习，越来越复杂的模型相继被提出。本文关注的{\hei 记忆机制}({\crimson Memory Mechanism})与{\hei 注意力机制}({\crimson Attention Mechanism})是为了解决循环神经网络中长期依赖的问题而提出的两种方法。
+
+本文主要关注深度学习中的循环神经网络。我们将在文章的第二部分介绍基本的神经网络模型和算法，循环神经网络将会在第三部分介绍，接着会讨论被广泛使用的长短期记忆网络模型。为了解决更长时间的依赖问题，引入了记忆机制与注意力机制。最后介绍了一些应用。
+
+
+\section{神经网络}
+
+本节介绍的神经网络也可以称为{\hei 前馈神经网络}({\crimson Feedforward Neural Network})，以区别与后面要介绍的循环神经网络。在这种神经网络中，前一层只会向紧接着的后一层传播，而没有自循环的隐藏单元。
+
+前馈神经网络(以下简称神经网络)一般由{\hei 输入层}({\crimson Input Layer})、{\hei 隐藏层}({\crimson Hidden Layer})、{\hei 输出层}({\crimson Output Layer})构成。图 {\kai \ref{fig:ANN}} 就是一个只有三层的神经网络。图中每一个节点称为{\hei 神经元}({\crimson Neuron})，在输入层共有$\:${\kai 8}$\:$个节点，代表输入的是一个$\:${\kai 8}$\:$维的向量。在输出层共有$\:${\kai 10}$\:$个节点，代表输出的是一个$\:${\kai 10}$\:$维的向量，如在手写数字识别\footnote{\hei 标准的手写数字识别数据集 {\crimson MINST} 可见：\url{http://yann.lecun.com/exdb/mnist/}}中，{\kai 10}$\:$个节点可分别代表 $0,1,2,\ldots,9$ 这$\:${\kai 10}$\:$个数字。中间的隐藏层共有$\:${\kai 15}$\:$个节点，代表一个$\:${\kai 15}$\:$维的向量。如果没有隐藏层而只有输入层和输出层，模型等价于 {\hei {\crimson Softmax} 回归}({\crimson Softmax Regression})。
+
+一个非常值得一提的性质是，尽管只有三层的神经网络看似非常简单，但它的表现能力却非常强。只有三层的神经网络可以拟合任意函数，这称为神经网络的{\hei 普遍性}({\crimson Universality})。{\kai 1989}$\:$年，{\crimson George Cybenko} 和 {\crimson Kurt Hornik} 等人分别独立证明了该结果{\kai \cite{cybenko1989approximation,hornik1989multilayer}}，本文不会对此做深入讨论。另外，在 {\crimson Nielsen} 的书中提供了一个非常漂亮的可视化证明{\kai \cite{Nielsen2015Book}}。接下来简要介绍神经网络的模型和求解算法。
+
+\begin{figure}
+\centering
+\def\layersep{3.5cm}
+\begin{tikzpicture}[shorten >=1pt,->,draw=black, node distance=\layersep]
+    \tikzstyle{every pin edge}=[<-,shorten <=1pt]
+    \tikzstyle{neuron}=[circle,thick,minimum size=11pt,inner sep=0pt]
+%    \tikzstyle{input neuron}=[neuron,draw=blue!70, fill=blue!20];
+%    \tikzstyle{output neuron}=[neuron,draw=red!70, fill=red!20];
+%    \tikzstyle{hidden neuron}=[neuron,draw=yellow!90, fill=yellow!30];
+    \tikzstyle{input neuron}=[neuron,draw=black];
+    \tikzstyle{output neuron}=[neuron,draw=black];
+    \tikzstyle{hidden neuron}=[neuron,draw=black];
+    \tikzstyle{annot} = [text width=4em, text centered]
+
+    % Draw the input layer nodes
+    \foreach \name / \y in {1,...,8}
+    % This is the same as writing \foreach \name / \y in {1/1,2/2,3/3,4/4}
+        \node[input neuron] (I-\name) at (0,-\y * 0.6) {};
+
+    % Draw the hidden layer nodes
+    \foreach \name / \y in {1,...,15}
+        \path[yshift=2.1cm]
+            node[hidden neuron] (H-\name) at (\layersep,-\y * 0.6) {};
+
+    % Draw the output layer node
+    \foreach \name / \y in {1,...,10}
+        \path[yshift=0.5cm]
+           node[output neuron] (O-\name) at (\layersep * 2,-\y * 0.6) {};
+
+    % Connect every node in the input layer with every node in the
+    % hidden layer.
+    \foreach \source in {1,...,8}
+        \foreach \dest in {1,...,15}
+            \path (I-\source) edge[black] (H-\dest);
+
+    % Connect every node in the hidden layer with the output layer
+    \foreach \source in {1,...,15}
+        \foreach \dest in {1,...,10}
+            \path (H-\source) edge[black] (O-\dest);
+
+    % Annotate the layers
+    \node[annot,above of=H-1, node distance=1.5cm] (hl) {\hei 隐藏层};
+    \node[annot,left of=hl] {\hei  输入层};
+    \node[annot,right of=hl] {\hei 输出层};
+\end{tikzpicture}
+\caption{\kai 只有三层的前馈神经网络}\label{fig:ANN}
+\end{figure}
+
+\subsection{模型}
+
+首先，我们作一些约定。在本文中我们用小写字母表示标量，用粗体小写字母表示向量，用粗体大写字母表示矩阵，用字母加上符号“\textasciicircum ”表示预测值。
+
+在图 {\kai \ref{fig:ANN}} 给出的示例中只有一个隐藏层，而更一般的神经网络可以有多个隐藏层。我们用$\:\bm{x}\:$表示输入向量，其中$\:\bm{x} = (x_1,x_2,\ldots,x_n),\,\bm{x} \in \mathbb{R}^n\:$为$\:n\:$维向量，表示输入层有$\:n\:$个节点。用$\:L\:$表示神经网络的总层数，用$\:\bm{a}^{(l)}\:$表示第$\:l\:$层向量。第一层即为输入层，故$\:\bm{a}^{(1)} = \bm{x}$。用$\:\hat{\bm{y}}\:$表示神经网络输出的预测值，其中$\:\hat{\bm{y}} =( \hat{y}_1,\hat{y}_2,\ldots,\hat{y}_m),\,\hat{\bm{y}} \in \mathbb{R}^m\:$为$\:m\:$维向量，表示输出层有$\:m\:$个节点，$\hat{\bm{y}} = \bm{a}^{(L)}$。
+
+在神经网络的前馈计算中，后一层的向量由前一层的向量经一个线性变换加一个非线性的{\hei 激活函数}({\crimson Activation Function})得到，即：
+\begin{align}
+&\bm{z}^{(l)} = \bm{W}^{(l)}\cdot\bm{a}^{(l-1)} + \bm{b}^{(l)} \quad (l = 2,\ldots,L) \\
+&\bm{a}^{(l)} = \bm{\sigma}(\bm{z}^{(l)}) \quad (l = 2,\ldots,L)
+\end{align}
+其中$\:\sigma\:$为 {\crimson sigmoid} 激活函数：
+\begin{equation}
+\sigma(x) = \frac{1}{1 + e^{-x}}
+\end{equation} 
+粗体的$\:\bm{\sigma}\:$表示该函数是{\hei 元素级}({\crimson Element-wise})地应用于向量。例如：$\bm{\sigma}(\bm{x}) = (\sigma(x_1),\allowbreak\sigma(x_2),\ldots,\sigma(x_n))$。除了 {\crimson sigmoid} 函数外，另外两种常用的激活函数是{\hei 双曲正切}({\crimson Hyperbolic Tangent})函数 {\crimson tanh}：
+\begin{equation}
+\text{\crimson tanh}(x) = \frac{e^x - e^{-x}}{e^x + e^{-x}}
+\end{equation} 
+与{\hei 整流线性单元}({\crimson Rectified Linear Unit})函数 {\crimson ReLU}：
+\begin{equation}
+\text{\crimson ReLU}(x) = \text{\crimson max}(0, x)
+\end{equation} 
+这三种函数的比较可见图 {\kai \ref{fig:func}}。
+
+\begin{figure}[hb]
+\centering
+\begin{tikzpicture}
+      \begin{axis}[
+        %mlineplot,
+        width=\textwidth * 0.8,
+        height=7cm,
+        axis x line=center,
+        axis y line=center,
+        ymin=-1.5, ymax=1.5,
+        xmin=-4, xmax=4,
+        xtick={-3,-2,...,3},
+        ytick={-1,-0.5,...,1},
+        xlabel={$x$},
+        ylabel={$y$},
+        xlabel style={right},
+        ylabel style={above},
+        samples=100,
+        grid=both,
+        legend style={at={(axis cs:-3.5,0.7)},anchor=south west},
+      ]
+
+	\addplot[blue!70, ultra thick] (x,{1/(1+exp(-x))});
+     \addplot[red!70,  ultra thick] (x,{(exp(x)-exp(-x))/(exp(x)+exp(-x))});
+     \addplot[yellow!90,  ultra thick] (x,{max(0,x)});
+    
+     \legend{\crimson sigmoid,\crimson tanh,\crimson ReLU}    										 		 		 		 		 		 		 	
+
+      \end{axis}
+\end{tikzpicture}
+\caption{\kai 几种激活函数}\label{fig:func}
+\end{figure}
+
+在每次前馈计算中，我们会引入两个参数：矩阵$\:\bm{W}^{(l)}\:$和向量$\:\bm{b}^{(l)}$。设第$\:l\:$层神经元个数为$\:n^{(l)}\:$，则$\:\bm{W}^{(l)} \in \mathbb{R}^{n^{(l)}\times n^{(l-1)}}$，$\bm{b}^{(l)} \in \mathbb{R}^{n^{(l-1)}}$。经过$\:L-1\:$次前馈计算后，神经网络会输出预测值$\:\hat{\bm{y}}\:$。接下来就是求解模型的参数使得预测值$\:\hat{\bm{y}}\:$与真实值$\:\bm{y}\:$尽可能接近。
+
+\subsection{优化}
+
+要求解模型参数，首先要定义{\hei 损失函数}({\crimson Loss Function})。在用神经网络做分类中，真实类别$\:\bm{y}\:$一般用 {\crimson One-hot} 向量表示，即只有一个元素为$\:${\kai 1}，其余为$\:${\kai 0}$\:$的向量。在这种情况下我们一般选用{\hei 交叉熵}({\crimson Cross Entropy})损失函数：
+\begin{equation}
+\mathcal{L}(\bm{W},\bm{b}) = \sum_{i=1}^{k} \mathcal{L}_i(\bm{W},\bm{b}) = \sum_{i=1}^{k} -\bm{y}_i^{T}\cdot\textbf{\crimson log}(\hat{\bm{y}}_i)
+\end{equation}
+这里$\:k\:$表示{\hei 数据集}({\crimson Data Set})大小，$\bm{y}_i\:$表示第$\:i\:$个数据的真实类别。
+
+当使用交叉熵损失函数时，需要使模型的输出为一个{\hei 概率分布}({\crimson Probability Distribution})，故在最后一层我们将使用 {\crimson Softmax} 函数使之成为一个概率分布：
+\begin{equation}
+\begin{split}
+\bm{y} &= \textbf{\crimson softmax}(\bm{x}) \\
+y_i &= \frac{e^{x_i}}{\sum^n_{j = 1}e^{x_j}}
+\end{split}
+\end{equation}
+
+接下来即要最小化函数$\:\mathcal{L}$，一般用{\hei 梯度下降法}({\crimson Gradient Descent})求解。即：
+\begin{align}
+\bm{W}_t &= \bm{W}_{t-1} - \alpha\frac{\partial \mathcal{L}}{\partial \bm{W}} =  \bm{W}_{t-1} - \alpha\sum_{i=1}^{k} \frac{\partial \mathcal{L}_i}{\partial \bm{W}}\\
+\bm{b}_t &= \bm{b}_{t-1} - \alpha\frac{\partial \mathcal{L}}{\partial \bm{b}} =  \bm{b}_{t-1} - \alpha\sum_{i=1}^{k} \frac{\partial \mathcal{L}_i}{\partial \bm{b}}
+\end{align}
+这里，$\alpha\:$为{\hei 学习速率}({\crimson Learning Rate})。在实际应用中，由于数据集经常比较大，每次迭代需要在整个数据集上计算导数，导致计算代价太大，故一般采用{\hei 随机梯度下降}({\crimson Stochastic Gradient Descent, SGD})：
+\begin{align}
+\bm{W}_t &= \bm{W}_{t-1} - \alpha\frac{\partial \mathcal{L}_i}{\partial \bm{W}}\\
+\bm{b}_t &= \bm{b}_{t-1} - \alpha\frac{\partial \mathcal{L}_i}{\partial \bm{b}}
+\end{align}
+即每次只随机选一个数据计算导数。或是 {\hei {\crimson Mini-batch} 随机梯度下降}({\crimson Mini-batch Stochastic Gradient Descent})，即每次取一小部分计算导数。
+
+近年来，也出现了很多随机梯度下降的改进算法，如 {\crimson Adagrad}{\kai \cite{duchi2011adaptive}}、{\crimson Adadelta}{\kai \cite{zeiler2012adadelta}}、
+{\crimson RMSProp}\footnote{\hei 关于 {\crimson RMSProp} 没有正式的论文发表，首见于 {\crimson Hinton} 的网络公开课：\url{http://www.cs.toronto.edu/~tijmen/csc321/slides/lecture_slides_lec6.pdf}}、{\crimson Adam}{\kai \cite{kingma2014adam}} 等。
+
+\subsection{反向传播算法}
+
+接下来，就是要计算在随机梯度下降中出现的导数$\:\frac{\partial \mathcal{L}_i}{\partial \bm{W}}\:$和$\:\frac{\partial \mathcal{L}_i}{\partial \bm{b}}$。为了方便讨论，我们会去掉$\:\mathcal{L}_i\:$中的下标$\:i\:$，即变为：
+\begin{equation}
+\mathcal{L}(\bm{W},\bm{b}) =  -\bm{y}^{T}\cdot\textbf{\crimson log}(\hat{\bm{y}})
+\end{equation}
+
+反向传播算法(以下简称 {\crimson BP} 算法)就是神经网络中计算导数$\:\frac{\partial \mathcal{L}}{\partial \bm{W}}\:$和$\:\frac{\partial \mathcal{L}}{\partial \bm{b}}\:$的算法。从数学上来看，{\crimson BP} 算法不过是函数求导中{\hei 链式法则}({\crimson Chain Rule})的应用。算法的意义在于给出了工程上易实现，且简单高效的算法。
+
+首先我们引入一些记号：
+\begin{align}
+&\bm{z}^{(l)} = \bm{W}^{(l)}\cdot\bm{a}^{(l-1)} + \bm{b}^{(l)} \quad (l = 2,\ldots,L) \\
+&\bm{\delta}^{(l)} = \frac{\partial \mathcal{L}}{\partial \bm{z}^{(l)}} \quad (l = 2,\ldots,L) 
+\end{align}
+这里，$\bm{\delta}^{(l)}\:$为{\hei 误差项}({\crimson Error})。
+
+在 {\crimson BP} 算法中，首先会计算{\hei 输出误差}({\crimson Output Error})$\:\bm{\delta}^{(L)}$：
+\begin{equation}
+\begin{split}
+\bm{\delta}^{(L)} = \frac{\partial \mathcal{L}}{\partial \bm{z}^{(L)}} &= \frac{\partial \mathcal{L}}{\partial \hat{\bm{y}}} \cdot \frac{\partial \hat{\bm{y}}}{\partial \bm{z}^{(L)}} \\ 
+&= \frac{\partial \mathcal{L}}{\partial \bm{a}^{(L)}} \cdot \frac{\partial \bm{a}^{(L)}}{\partial \bm{z}^{(L)}} \\
+&= \frac{\partial \mathcal{L}}{\partial \bm{a}^{(L)}} \odot \bm{\sigma}^{'}(\bm{z}^{(L)}) \quad (\text{\hei 需要 } \bm{a}^{(L)}, \bm{z}^{(L)})
+\end{split}
+\end{equation}
+这里，$\odot\:$为 {\hei {\crimson Hadamard} 乘积}({\crimson Hadamard Product})。
+
+接着将{\hei 误差反向传播}({\crimson Backpropagate the Error})：
+\begin{equation}
+\bm{\delta}^{(l)} = ((\bm{W}^{(l+1)})^T \bm{\delta}^{(l+1)}) \odot \bm{\sigma}^{'}(\bm{z}^{(l)}) \quad (\text{\hei 需要 } \bm{z}^{(l)}; l=L-1, L-2,\ldots, 2)
+\end{equation}
+
+把每一层的误差计算出来后，就可以计算导数了：
+\begin{align}
+&\frac{\partial \mathcal{L}}{\partial \bm{b}^{(l)}} = \bm{\delta}^{(l)} \quad (l=L, L-1,\ldots, 2)\\
+&\frac{\partial \mathcal{L}}{\partial \bm{W}^{(l)}} = \bm{\delta}^{(l)} \cdot (\bm{a}^{(l-1)})^T \quad (\text{\hei 需要 } \bm{a}^{(l-1)}; l=L, L-1,\ldots, 2)
+\end{align}
+
+在 {\crimson BP} 算法中，需要知道$\:\bm{z}^{(l)}\:$和$\:\bm{a}^{(l)}\:$的值，故每次反向传播的过程都首先需要一次前馈计算。{\crimson BP} 算法的完整描述参见算法 {\kai \ref{alg:BP}}。
+
+\begin{algorithm}
+\caption{\kai 反向传播算法}               %标题
+\label{alg:BP}                         %标记算法，方便在其它地方引用
+\begin{algorithmic}[1]
+\kai
+\STATE {\hei 输入}$\:\bm{x}\:$：把第一层向量$\:\bm{a}^{(1)}\:$设为$\:\bm{x}\:$。
+\STATE {\hei 前馈计算}：对$\:l = 2,\ldots,L$，计算$\:\bm{z}^{(l)} = \bm{W}^{(l)}\cdot\bm{a}^{(l-1)} + \bm{b}^{(l)}\:$和$\:\bm{a}^{(l)} = \bm{\sigma}(\bm{z}^{(l)})\:$。
+\STATE {\hei 输出误差}：计算向量$\:\bm{\delta}^{(L)} = \frac{\partial \mathcal{L}}{\partial \bm{a}^{(L)}} \odot \bm{\sigma}^{'}(\bm{z}^{(L)})$。
+\STATE {\hei 误差反向传播}：对$\:l=L-1, L-2,\ldots, 2\:$，计算
+$$\bm{\delta}^{(l)} = ((\bm{W}^{(l+1)})^T \bm{\delta}^{(l+1)}) \odot \bm{\sigma}^{'}(\bm{z}^{(l)})。$$
+\STATE {\hei 输出}：损失函数的梯度由$\:\frac{\partial \mathcal{L}}{\partial \bm{b}^{(l)}} = \bm{\delta}^{(l)}\:$和$\:\frac{\partial \mathcal{L}}{\partial \bm{W}^{(l)}} = \bm{\delta}^{(l)} \cdot (\bm{a}^{(l-1)})^T\:$计算。
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{梯度消失问题}
+
+在神经网络中，一个使得神经网络层不可能很深的一个重要原因就是梯度消失问题。我们先来看一个简单的例子帮助更好的理解该问题。图 {\kai \ref{fig:DNN}} 是一个最简单的深度神经网络，在该网络中所有层都只有一个神经元，共有三个隐藏层。注意现在的$\:w^{(l)}\:$和$\:b^{(l)}\:$均为标量。计算第二层的导数可知：
+\begin{equation}
+\frac{\partial \mathcal{L}}{\partial b^{(2)}} = \sigma^{'}(z^{(2)})\times w^{(3)}\times \sigma^{'}(z^{(3)})\times w^{(4)}\times \sigma^{'}(z^{(4)})\times w^{(5)}\times \sigma^{'}(z^{(5)})\times \frac{\partial \mathcal{L}}{\partial a^{(5)}}
+\end{equation}
+由 {\crimson sigmoid} 函数的性质可知：$\sigma^{'} \le \frac{1}{4}$。通常，我们会用均值为$\:${\kai 0}，方差为$\:${\kai 1}$\:$的 {\hei {\crimson Gaussian} 分布}({\crimson Gaussian Distribution})初始化$\:w^{(l)}\:$和$\:b^{(l)}$，会使用{\hei 正则化}({\crimson Regularization})的技巧来防止过拟合。这样，$w^{(l)}\:$和$\:b^{(l)}\:$的值都不会太大。如果$\:w^{(l)}\:$的值小于$\:${\kai 1}，由于在计算导数的过程中，每一层会比后一层多乘以$\:\sigma^{'}(z^{(l-1)})\times w^{(l)} < \frac{1}{4}$，故导数会随着反向传播而指数级缩小。这样会导致用随机梯度下降来优化时，前面几层的参数学习的过程极慢。
+
+\begin{figure}[hb]
+\centering
+\def\layersep{3.5cm}
+\begin{tikzpicture}[shorten >=1pt,->,draw=black, node distance=\layersep]
+    \tikzstyle{every pin edge}=[<-,shorten <=1pt]
+    \tikzstyle{neuron}=[circle,ultra thick,minimum size=20pt,inner sep=0pt]
+%    \tikzstyle{input neuron}=[neuron,draw=blue!70, fill=blue!20];
+%    \tikzstyle{output neuron}=[neuron,draw=red!70, fill=red!20];
+%    \tikzstyle{hidden neuron}=[neuron,draw=yellow!90, fill=yellow!30];
+    \tikzstyle{input neuron}=[neuron,draw=black];
+    \tikzstyle{output neuron}=[neuron,draw=black];
+    \tikzstyle{hidden neuron}=[neuron,draw=black];
+    \tikzstyle{hide neuron}=[neuron,minimum size=0pt];
+    \tikzstyle{annot} = [text centered]
+
+    % Draw the input layer nodes
+    \foreach \name / \y in {1,...,5}
+    % This is the same as writing \foreach \name / \y in {1/1,2/2,3/3,4/4}
+        \node[input neuron] (I-\name) at (\y * 2.5 - 2.5,0) {};
+      
+     \node[hide neuron] (I-6) at (5 * 2.4,0) {$\mathcal{L}$};
+        
+     \path (I-1) edge[ultra thick,arrows={-stealth}] node[above] {$w^{(2)}$} node[below] {$b^{(2)}$} (I-2);
+     \path (I-2) edge[ultra thick,arrows={-stealth}] node[above] {$w^{(3)}$} node[below] {$b^{(3)}$} (I-3);
+     \path (I-3) edge[ultra thick,arrows={-stealth}] node[above] (midden)  {$w^{(4)}$} node[below] {$b^{(4)}$} (I-4);
+     \path (I-4) edge[ultra thick,arrows={-stealth}] node[above] {$w^{(5)}$} node[below] {$b^{(5)}$} (I-5);
+     \path (I-5) edge[ultra thick,arrows={-stealth}]  (I-6);
+
+	%\node[annot,above of=midden, node distance=1cm] (hl) {$\frac{\partial \mathcal{L}}{\partial b^{(2)}} = \sigma^{'}(z^{(2)})\times w^{(3)}\times \sigma^{'}(z^{(3)})\times w^{(4)}\times \sigma^{'}(z^{(4)})\times w^{(5)}\times \sigma^{'}(z^{(5)})\times \frac{\partial \mathcal{L}}{\partial a^{(5)}} $};
+
+\end{tikzpicture}
+\caption{\kai 最简单的深度神经网络}\label{fig:DNN}
+\end{figure}
+
+{\crimson Xavier Glort} 和 {\crimson Yoshua Bengio} 发现{\kai \cite{glorot2010understanding}}，不同的激活函数对性能有很大的影响，{\crimson sigmoid} 函数是造成梯度消失的一个很重要的原因。同时几组团队发现{\kai \cite{nair2010rectified,glorot2011deep,maas2013rectifier}}，十分简单的 {\crimson ReLU} 函数却是最好的。{\crimson ReLU} 的导数为$\:${\kai 1}$\:$或$\:${\kai 0}$\:$可以有效的避免梯度消失问题。与此同时，可以用 {\crimson GPU} 来加速训练过程。在循环神经网络仍然存在梯度消失的问题，在下一节中还有关于该问题的进一步讨论。
+
+\section{循环神经网络}
+
+传统的神经网络的一个很大弊端是，当前的输出只与当前的输入有关。然而在实际中，事物之间常常具有某种时间的关联性。比如说，当前发生的事件会受到之前很长一段时间的影响。但我们读到一个词的时候，单单凭这一个词我们无法理解它的意思\footnote{\hei 词的一词多义现象。}，而是需要根据{\hei 上下文}({\crimson Context})来理解它的意思。
+
+\begin{figure}[hb]
+\centering
+\def\layersep{2.5cm}
+\begin{tikzpicture}[shorten >=1pt,->,draw=black, node distance=\layersep]
+    \tikzstyle{every pin edge}=[<-,shorten <=1pt]
+    \tikzstyle{neuron}=[circle,ultra thick,minimum size=25pt,inner sep=0pt]
+%    \tikzstyle{input neuron}=[neuron,draw=blue!70, fill=blue!20];
+%    \tikzstyle{output neuron}=[neuron,draw=red!70, fill=red!20];
+%    \tikzstyle{hidden neuron}=[neuron,draw=yellow!90, fill=yellow!30];
+    \tikzstyle{input neuron}=[neuron,draw=black];
+    \tikzstyle{output neuron}=[neuron,draw=black];
+    \tikzstyle{hidden neuron}=[neuron,draw=black];
+    \tikzstyle{hide neuron}=[neuron,draw=black,minimum size=0pt];
+    \tikzstyle{annot} = [text width=4em, text centered]
+    
+      
+    \node[hidden neuron] (H)  {$\bm{h}_t$}; 
+    \node[input neuron, below of=H] (I)  {$\bm{x}_t$};
+    \node[output neuron, above of=H] (O) {$\hat{\bm{y}}_t$};
+    \path (I) edge[ultra thick,arrows={-stealth}] (H);
+    \path (H) edge[ultra thick,arrows={-stealth}] (O);    
+    \path (H) edge[loop right,ultra thick,arrows={-stealth}] node[right] {$\bm{h}_{t-1}$}  (H);
+    
+\end{tikzpicture}
+\caption{\kai 循环神经网络}\label{fig:RNN}
+\end{figure}
+
+循环神经网络(以下简称 {\crimson RNN}，需要注意的是，应该与另一种 {\crimson RNN}({\crimson Recursive Neural Network, {\hei 递归神经网络}})相区别，本文提到的 {\crimson RNN} 都是指循环神经网络)则是处理该问题的一种强有力的模型。图 {\kai \ref{fig:RNN}} 则是一个简单 {\crimson RNN} 结构图。在图 {\kai \ref{fig:RNN}} 中，每一个节点表示一个向量，$\bm{x}_t\:$是输入，$\hat{\bm{y}}_t\:$是输出，$\bm{h}_t\:$是一个自循环的隐藏层单元，允许之前的信息得以保留，并对下一时刻的输出产生影响。
+
+\subsection{模型}
+
+如果我们把图 {\kai \ref{fig:RNN}} 沿时间展开的话，就得到了图 {\kai \ref{fig:RNN2}}。我们用$\:\bm{\mathbf{x}}\:$表示输入序列，其中$\:\bm{\mathbf{x}}=(\bm{x}_1,\bm{x}_2,\ldots,\bm{x}_T),\, \bm{x}_t \in \mathbb{R}^n\:$是该序列在$\:t\:$时刻的一个$\:n\:$维向量，$T\:$是该序列长度。用$\:\bm{\mathbf{h}}\:$来表示隐藏层单元序列，其中$\:\bm{\mathbf{h}}=(\bm{h}_1,\bm{h}_2,\ldots,\bm{h}_T),\, \bm{h}_t \in \mathbb{R}^k\:$，在$\:\bm{h}_t\:$中保存了前$\:t\:$时刻的信息。用$\:\hat{\bm{\mathbf{y}}}\:$来表示 {\crimson RNN} 的输出序列，其中$\:\hat{\bm{\mathbf{y}}}=(\hat{\bm{y}}_1,\hat{\bm{y}}_2,\ldots,\hat{\bm{y}}_T),\, \hat{\bm{y}}_t \in \mathbb{R}^m\:$。
+
+在 {\crimson RNN} 的前馈计算中，首先需要初始化一个隐藏层单元状态$\:\bm{h}_0\:$。之后的$\:\bm{h}_t\:$由前一时刻的$\:\bm{h}_{t-1}\:$和当前的输入$\:\bm{x}_t\:$计算得到：
+\begin{equation}
+\bm{h}_t = \textbf{\crimson tanh}(\bm{U}\bm{x}_t + \bm{W}\bm{h}_{t-1})\quad (t = 1,2,\ldots,T)
+\end{equation}
+输出值$\:\hat{\bm{y}}_t\:$由$\:\bm{h}_t\:$计算得到：
+\begin{equation}
+\hat{\bm{y}}_t = \textbf{\crimson softmax}(\bm{V}\bm{h}_t) \quad (t = 1,2,\ldots,T)
+\end{equation}
+这样，我们就得到了整个输出：$\hat{\bm{\mathbf{y}}}=(\hat{\bm{y}}_1,\hat{\bm{y}}_2,\ldots,\hat{\bm{y}}_T)$。
+
+需要注意的是，这里的激活函数 $\textbf{{\crimson tanh}}$ 也可由其他的激活函数替换。在不同的时刻，$\bm{U},\bm{W},\bm{V}\:$三个参数是共享的。
+
+\begin{figure}
+\centering
+\def\layersep{2.5cm}
+\begin{tikzpicture}[shorten >=1pt,->,draw=black, node distance=\layersep]
+    \tikzstyle{every pin edge}=[<-,shorten <=1pt]
+    \tikzstyle{neuron}=[circle,ultra thick,minimum size=25pt,inner sep=0pt]
+%    \tikzstyle{input neuron}=[neuron,draw=blue!70, fill=blue!20];
+%    \tikzstyle{output neuron}=[neuron,draw=red!70, fill=red!20];
+%    \tikzstyle{hidden neuron}=[neuron,draw=yellow!90, fill=yellow!30];
+    \tikzstyle{input neuron}=[neuron,draw=black];
+    \tikzstyle{output neuron}=[neuron,draw=black];
+    \tikzstyle{hidden neuron}=[neuron,draw=black];
+    \tikzstyle{hide neuron}=[neuron,draw=black,minimum size=0pt];
+    \tikzstyle{annot} = [text width=4em, text centered]
+    
+   
+
+    % Draw the input layer nodes
+     \node[input neuron] (I-1) at (1 * 2.5,-\layersep * 2) {$\bm{x}_{t-1}$};
+     \node[input neuron] (I-2) at (2 * 2.5,-\layersep * 2) {$\bm{x}_{t}$};
+     \node[input neuron] (I-3) at (3 * 2.5,-\layersep * 2) {$\bm{x}_{t+1}$};
+
+	\node[hidden neuron] (H-1) at (1 * 2.5,-\layersep) {$\bm{h}_{t-1}$};
+	\node[hidden neuron] (H-2) at (2 * 2.5,-\layersep) {$\bm{h}_t$};
+	\node[hidden neuron] (H-3) at (3 * 2.5,-\layersep) {$\bm{h}_{t+1}$};
+    % Draw the output layer node
+ 
+	\node[output neuron] (O-1) at (1 * 2.5,0) {$\hat{\bm{y}}_{t-1}$};
+	\node[output neuron] (O-2) at (2 * 2.5,0) {$\hat{\bm{y}}_{t}$};
+	\node[output neuron] (O-3) at (3 * 2.5,0) {$\hat{\bm{y}}_{t+1}$};
+    % Connect every node in the input layer with every node in the
+    % hidden layer.
+     
+    
+    \foreach \source in {1,...,3}
+          \path (I-\source) edge[ultra thick,arrows={-stealth}] node[right] {$\bm{U}$} (H-\source);
+     \foreach \source in {1,...,3}
+          \path (H-\source) edge[ultra thick,arrows={-stealth}] node[left] {$\bm{V}$} (O-\source);
+          
+      \path (H-1) edge[ultra thick,arrows={-stealth}] node[above] {$\bm{W}$} (H-2);
+      \path (H-2) edge[ultra thick,arrows={-stealth}] node[above] {$\bm{W}$} (H-3);
+      
+       \node[hide neuron,left of=H-1,node distance=2.3cm] (h1){};
+      \path (h1) edge[ ultra thick,arrows={-stealth}] node[above] {$\bm{W}$} (H-1);
+       \node[hide neuron,right of=H-3,node distance=2.3cm] (h3){};
+      \path (H-3) edge[ultra thick,arrows={-stealth}] node[above] {$\bm{W}$} (h3);
+      
+      \node[hide neuron,left of=h1,node distance=2.3cm] (bigarrow){};
+     % \path (bigarrow) edge[ ultra thick,arrows={-stealth}] node[above] {$W$} (h1);
+      
+    \node[hidden neuron, left of=bigarrow,node distance=1.6cm] (H)  {}; 
+    \node[input neuron, below of=H] (I)  {};
+    \node[output neuron, above of=H] (O) {};
+    \path (I) edge[ultra thick,arrows={-stealth}] node[left] {$\bm{U}$} (H);
+    \path (H) edge[ultra thick,arrows={-stealth}] node[left] {$\bm{V}$} (O);    
+    \path (H) edge[loop right,ultra thick,arrows={-stealth}] node[left] {$\bm{W}$}  (H);
+    
+    \node[single arrow,very thick,draw=black,minimum height=2cm,shape border rotate=0] at (-1.0,-\layersep) {\hei  \scriptsize 展开};
+
+\end{tikzpicture}
+\caption{\kai 展开的循环神经网络}\label{fig:RNN2}
+\end{figure}
+
+\subsection{优化}
+
+与神经网络中类似，在 {\crimson RNN} 中也会使用交叉熵损失函数：
+\begin{equation}
+\mathcal{L}(\bm{U},\bm{W},\bm{V}) = \sum_{i=1}^{d} \mathcal{L}_i(\bm{U},\bm{W},\bm{V}) = \sum_{i=1}^{d}\sum_{t=1}^{T} -(\bm{y}_t^{(i)})^{T}\cdot\textbf{\crimson log}(\hat{\bm{y}}_t^{(i)})
+\end{equation}
+这里$\:d\:$表示数据集大小，$\bm{\mathbf{y}}^{(i)}=(\bm{y}_1^{(i)},\bm{y}_2^{(i)},\ldots,\bm{y}_T^{(i)})\:$表示第$\:i\:$个序列的$\:T\:$个真实类别。
+
+在神经网络中用到的优化算法，都可以用在 {\crimson RNN} 中。
+
+\subsection{沿时间反向传播算法}
+
+与神经网络类似，在 {\crimson RNN} 中也需要计算导数$\:\frac{\partial \mathcal{L}_i}{\partial \bm{U}},\frac{\partial \mathcal{L}_i}{\partial \bm{W}}\:$和$\:\frac{\partial \mathcal{L}_i}{\partial \bm{V}}$。{\crimson RNN} 中计算导数的算法叫{\hei 沿时间反向传播算法}({\crimson Backpropagation Through Time, BPTT}){\kai \cite{werbos1990backpropagation}}。为了方便讨论，我们会去掉$\:\mathcal{L}_i\:$中的下标$\:i\:$，即变为：
+\begin{equation}
+\mathcal{L}(\bm{U},\bm{W},\bm{V}) =  \sum_{t=1}^{T} -(\bm{y}_t)^{T}\cdot\textbf{\crimson log}(\hat{\bm{y}}_t)
+\end{equation}
+
+首先，我们引入一些记号：
+\begin{align}
+\mathcal{L}_t &= -(\bm{y}_t)^{T}\cdot\textbf{\crimson log}(\hat{\bm{y}}_t) \quad (t = 1,2,\ldots,T)\\
+\bm{s}_t &= \bm{U}\bm{x}_t + \bm{W}\bm{h}_{t-1} \quad (t = 1,2,\ldots,T)\\
+\bm{z}_t &= \bm{V}\bm{h}_t \quad (t = 1,2,\ldots,T)
+\end{align}
+需要注意的是，本小节中的$\:\mathcal{L}_t\:$跟上一小节中的$\:\mathcal{L}_i\:$含义已经不一样了。
+
+计算$\:\bm{V}\:$的导数相对简单：
+\begin{equation}
+\begin{split}
+\frac{\partial \mathcal{L}_t}{\partial \bm{V}} = \frac{\partial \mathcal{L}_t}{\partial \hat{\bm{y}}_t}\cdot \frac{\partial \hat{\bm{y}}_t}{\partial \bm{V}} &= \frac{\partial \mathcal{L}_t}{\partial \hat{\bm{y}}_t}\cdot \frac{\partial \hat{\bm{y}}_t}{\partial \bm{z}_t}\cdot \frac{\partial \bm{z}_t}{\partial \bm{V}}\\
+&= \left(\frac{\partial \mathcal{L}_t}{\partial \hat{\bm{y}}_t}\cdot\frac{\partial \hat{\bm{y}}_t}{\partial \bm{z}_t}\right)\cdot \bm{h}_t^{T}\quad (\text{\hei 需要 }\hat{\bm{y}}_t,\bm{h}_t; t = 1,2,\ldots,T)
+\end{split}
+\end{equation}
+
+接下来计算$\:\bm{W}\:$的导数：
+\begin{equation}
+\begin{split}
+\frac{\partial \mathcal{L}_t}{\partial \bm{W}} &= \frac{\partial \mathcal{L}_t}{\partial \hat{\bm{y}}_t}\cdot \frac{\partial \hat{\bm{y}}_t}{\partial \bm{z}_t} \cdot \frac{\partial \bm{z}_t}{\partial \bm{h}_t}\cdot \frac{\partial \bm{h}_t}{\partial \bm{W}}\\
+&=\left(\frac{\partial \mathcal{L}_t}{\partial \hat{\bm{y}}_t}\cdot\frac{\partial \hat{\bm{y}}_t}{\partial \bm{z}_t}\right)^T\cdot \bm{V} \cdot \frac{\partial \bm{h}_t}{\partial \bm{W}}\quad (\text{\hei 需要 }\hat{\bm{y}}_t; t = 1,2,\ldots,T)
+\end{split}
+\end{equation}
+会发现还需要计算$\:\frac{\partial \bm{h}_t}{\partial \bm{W}}\:$：
+\begin{equation}
+\textcolor{red}{\frac{\partial \bm{h}_t}{\partial \bm{W}}} = \frac{\partial \bm{h}_t}{\partial \bm{s}_t}\cdot\left(\frac{\partial \bm{s}_t}{\partial \bm{W}} + \bm{W}\cdot \textcolor{red}{\frac{\partial \bm{h}_{t-1}}{\partial \bm{W}}}\right)\quad (\text{\hei 需要 }\bm{h}_t,\bm{h}_{t-1}; t = 2,3,\ldots,T)
+\end{equation}
+这是$\:\frac{\partial \bm{h}_t}{\partial \bm{W}}\:$的一个递推式，故我们首先要计算$\:\frac{\partial \bm{h}_1}{\partial \bm{W}}$：
+\begin{equation}
+\frac{\partial \bm{h}_1}{\partial \bm{W}} = \frac{\partial \bm{h}_1}{\partial \bm{s}_1}\cdot \frac{\partial \bm{s}_1}{\partial \bm{W}}\quad (\text{\hei 需要 }\bm{h}_1,\bm{h}_0)
+\end{equation}
+
+计算$\:\bm{U}\:$的导数的方式与$\:\bm{W}\:$类似，不再赘述。
+
+在 {\crimson BPTT} 算法中，需要知道$\:\bm{h}_t,\hat{\bm{y}}_t\:$的值，故每次反向传播的过程都首先需要一次前馈计算。
+
+\subsection{扩展}
+
+有时候，我们不仅要考虑之前的输入对当前的影响，也要考虑之后的输入对当前的影响\footnote{\hei 所谓上下文就是既要考虑之前的，也要考虑之后的。}。{\hei 双向循环神经网络}({\crimson Bidirectional Recurrent Neural Network, Bi-RNN}){\kai \cite{schuster1997bidirectional}}就是为了处理这种情况而提出的一种对 {\crimson RNN} 的扩展。图 {\kai \ref{fig:BiRNN}} 展示了 {\crimson Bi-RNN} 的结构。
+
+\begin{figure}[hb]
+\centering
+\def\layersep{2cm}
+\begin{tikzpicture}[shorten >=1pt,->,draw=black, node distance=\layersep]
+    \tikzstyle{every pin edge}=[<-,shorten <=1pt]
+    \tikzstyle{neuron}=[circle,ultra thick,minimum size=5pt,inner sep=0pt]
+%    \tikzstyle{input neuron}=[neuron,draw=blue!70, fill=blue!20];
+%    \tikzstyle{output neuron}=[neuron,draw=red!70, fill=red!20];
+%    \tikzstyle{hidden neuron}=[neuron,draw=yellow!90, fill=yellow!30];
+    \tikzstyle{input neuron}=[neuron,fill=black];
+    \tikzstyle{output neuron}=[neuron,fill=red];
+    \tikzstyle{hidden neuron}=[neuron,fill=orange];
+    \tikzstyle{hide neuron}=[neuron,draw=black,minimum size=0pt];
+    \tikzstyle{annot} = [text width=4em, text centered]
+    
+   
+
+    % Draw the input layer nodes
+    \foreach \name / \y in {1,...,3}
+    % This is the same as writing \foreach \name / \y in {1/1,2/2,3/3,4/4}
+        \node[input neuron] (I-\name) at (\y * 2.4,-\layersep * 2) {};
+
+    % Draw the hidden layer nodes
+    \foreach \name / \y in {1,...,3}
+           \node[hidden neuron] (H-\name) at (\y * 2.4 - 0.35,-\layersep) {};
+           
+     \foreach \name / \y in {1,...,3}
+           \node[hidden neuron] (H2-\name) at (\y * 2.4 + 0.35,-\layersep) {};
+
+    % Draw the output layer node
+    \foreach \name / \y in {1,...,3}
+           \node[output neuron] (O-\name) at (\y * 2.4,0) {};
+
+    % Connect every node in the input layer with every node in the
+    % hidden layer.
+     
+    
+    \foreach \source in {1,...,3}
+          \path (I-\source) edge[thick,arrows={-stealth}]  (H-\source);
+     \foreach \source in {1,...,3}
+          \path (I-\source) edge[thick,dashed,arrows={-stealth}]  (H2-\source);
+     \foreach \source in {1,...,3}
+          \path (H-\source) edge[thick,red,arrows={-stealth}]  (O-\source);
+      \foreach \source in {1,...,3}
+           \path (H2-\source) edge[thick,red,dashed,arrows={-stealth}]  (O-\source);
+        
+          
+      \path (H-1) edge[thick,orange,arrows={-stealth}, bend left=40] (H-2);
+      \path (H-2) edge[thick,orange,arrows={-stealth}, bend left=40] (H-3);
+      
+      \path (H2-3) edge[thick,orange,dashed,arrows={-stealth}, bend left=40] (H2-2);
+      \path (H2-2) edge[thick,orange,dashed,arrows={-stealth}, bend left=40] (H2-1);
+      
+       \node[annot]  at (1.7,-\layersep * 2) {$\bm{\mathbf{x}}$};
+        \node[annot]  at (1.7,-\layersep) {$\bm{\mathbf{h}}$};
+         \node[annot]  at (1.7,0) {$\bm{\mathbf{y}}$};
+    
+\end{tikzpicture}
+\caption{\kai 双向循环神经网络}\label{fig:BiRNN}
+\end{figure}
+
+在 {\crimson Bi-RNN} 中，由前向计算和后向计算组成：
+\begin{align}
+\overrightarrow{\bm{h}}_t &= \textbf{\crimson tanh}(\overrightarrow{\bm{U}}\bm{x}_t + \overrightarrow{\bm{W}}\overrightarrow{\bm{h}}_{t-1})\quad (t = 1,2,\ldots,T) \\
+\overleftarrow{\bm{h}}_t &= \textbf{\crimson tanh}(\overleftarrow{\bm{U}}\bm{x}_t + \overleftarrow{\bm{W}}\overleftarrow{\bm{h}}_{t+1})\quad (t = T,T-1,\ldots,1)
+\end{align}
+输出值$\:\hat{\bm{y}}_t\:$由$\:\overrightarrow{\bm{h}}_t\:$和$\:\overleftarrow{\bm{h}}_t\:$计算得到：
+\begin{equation}
+\hat{\bm{y}}_t = \textbf{\crimson softmax}(\bm{V}[\overrightarrow{\bm{h}}_t;\overleftarrow{\bm{h}}_t]) \quad (t = 1,2,\ldots,T)
+\end{equation}
+
+除此之外，还可以增加隐藏层，使之成为{\hei 深度双向循环神经网络}({\crimson Deep Bidirectional Recurrent Neural Network, Deep Bi-RNN})。图 {\kai \ref{fig:deepRNN}} 展示了 {\crimson Deep Bi-RNN} 的结构。
+
+假设有$\:L\:$个隐藏层，第一个隐藏层：
+\begin{align}
+\overrightarrow{\bm{h}}_t^{(1)} &= \textbf{\crimson tanh}(\overrightarrow{\bm{U}}^{(1)}\bm{x}_t + \overrightarrow{\bm{W}}^{(1)}\overrightarrow{\bm{h}}_{t-1}^{(1)})\quad (t = 1,2,\ldots,T) \\
+\overleftarrow{\bm{h}}_t^{(1)} &= \textbf{\crimson tanh}(\overleftarrow{\bm{U}}^{(1)}\bm{x}_t + \overleftarrow{\bm{W}}^{(1)}\overleftarrow{\bm{h}}_{t+1}^{(1)})\quad (t = T,T-1,\ldots,1)
+\end{align}
+第$\:l\:$个隐藏层$(l = 2,3,\ldots,L)$：
+\begin{align}
+\overrightarrow{\bm{h}}_t^{(l)} &= \textbf{\crimson tanh}(\overrightarrow{\bm{U}}^{(l)}[\overrightarrow{\bm{h}}_t^{(l-1)};\overleftarrow{\bm{h}}_t^{(l-1)}] + \overrightarrow{\bm{W}}^{(l)}\overrightarrow{\bm{h}}_{t-1}^{(l)})\quad (t = 1,2,\ldots,T) \\
+\overleftarrow{\bm{h}}_t^{(l)} &= \textbf{\crimson tanh}(\overleftarrow{\bm{U}}^{(l)}[\overrightarrow{\bm{h}}_t^{(l-1)};\overleftarrow{\bm{h}}_t^{(l-1)}] + \overleftarrow{\bm{W}}^{(l)}\overleftarrow{\bm{h}}_{t+1}^{(l)})\quad (t = T,T-1,\ldots,1)
+\end{align}
+输出层：
+\begin{equation}
+\hat{\bm{y}}_t = \textbf{\crimson softmax}(\bm{V}[\overrightarrow{\bm{h}}_t^{(L)};\overleftarrow{\bm{h}}_t^{(L)}]) \quad (t = 1,2,\ldots,T)
+\end{equation}
+
+\begin{figure}
+\centering
+\def\layersep{2cm}
+\begin{tikzpicture}[shorten >=1pt,->,draw=black, node distance=\layersep]
+    \tikzstyle{every pin edge}=[<-,shorten <=1pt]
+    \tikzstyle{neuron}=[circle,ultra thick,minimum size=5pt,inner sep=0pt]
+%    \tikzstyle{input neuron}=[neuron,draw=blue!70, fill=blue!20];
+%    \tikzstyle{output neuron}=[neuron,draw=red!70, fill=red!20];
+%    \tikzstyle{hidden neuron}=[neuron,draw=yellow!90, fill=yellow!30];
+    \tikzstyle{input neuron}=[neuron,fill=black];
+    \tikzstyle{output neuron}=[neuron,fill=red];
+    \tikzstyle{hidden neuron}=[neuron,fill=orange];
+    \tikzstyle{hide neuron}=[neuron,draw=black,minimum size=0pt];
+    \tikzstyle{annot} = [text width=4em, text centered]
+    
+   
+
+    % Draw the input layer nodes
+    \foreach \name / \y in {1,...,3}
+    % This is the same as writing \foreach \name / \y in {1/1,2/2,3/3,4/4}
+        \node[input neuron] (I-\name) at (\y * 2.4,-\layersep * 4) {};
+
+    % Draw the hidden layer nodes
+    \foreach \name / \y in {1,...,3}
+           \node[hidden neuron] (H-\name) at (\y * 2.4 - 0.35,-\layersep * 3) {};
+           
+     \foreach \name / \y in {1,...,3}
+           \node[hidden neuron] (H2-\name) at (\y * 2.4 + 0.35,-\layersep * 3) {};
+           
+      \foreach \name / \y in {1,...,3}
+           \node[hidden neuron] (2H-\name) at (\y * 2.4 - 0.35,-\layersep * 2) {};
+           
+     \foreach \name / \y in {1,...,3}
+           \node[hidden neuron] (2H2-\name) at (\y * 2.4 + 0.35,-\layersep * 2) {};
+           
+      \foreach \name / \y in {1,...,3}
+           \node[hidden neuron] (3H-\name) at (\y * 2.4 - 0.35,-\layersep) {};
+           
+     \foreach \name / \y in {1,...,3}
+           \node[hidden neuron] (3H2-\name) at (\y * 2.4 + 0.35,-\layersep) {};
+
+    % Draw the output layer node
+    \foreach \name / \y in {1,...,3}
+           \node[output neuron] (O-\name) at (\y * 2.4,0) {};
+
+    % Connect every node in the input layer with every node in the
+    % hidden layer.
+     
+    
+    \foreach \source in {1,...,3}
+          \path (I-\source) edge[thick,arrows={-stealth}]  (H-\source);
+     \foreach \source in {1,...,3}
+          \path (I-\source) edge[thick,dashed,arrows={-stealth}]  (H2-\source);
+     \foreach \source in {1,...,3}
+          \path (3H-\source) edge[thick,red,arrows={-stealth}]  (O-\source);
+      \foreach \source in {1,...,3}
+           \path (3H2-\source) edge[thick,red,dashed,arrows={-stealth}]  (O-\source);
+      \foreach \source in {1,...,3}
+          \path (H-\source) edge[thick,orange,arrows={-stealth}]  (2H-\source);
+      \foreach \source in {1,...,3}
+           \path (H-\source) edge[thick,orange,dashed,arrows={-stealth}]  (2H2-\source);
+       \foreach \source in {1,...,3}
+          \path (2H-\source) edge[thick,orange,arrows={-stealth}]  (3H-\source);
+      \foreach \source in {1,...,3}
+           \path (2H-\source) edge[thick,orange,dashed,arrows={-stealth}]  (3H2-\source);
+       \foreach \source in {1,...,3}
+          \path (H2-\source) edge[thick,orange,arrows={-stealth}]  (2H-\source);
+      \foreach \source in {1,...,3}
+           \path (H2-\source) edge[thick,orange,dashed,arrows={-stealth}]  (2H2-\source);
+       \foreach \source in {1,...,3}
+          \path (2H2-\source) edge[thick,orange,arrows={-stealth}]  (3H-\source);
+      \foreach \source in {1,...,3}
+           \path (2H2-\source) edge[thick,orange,dashed,arrows={-stealth}]  (3H2-\source);
+          
+      \path (H-1) edge[thick,orange,arrows={-stealth}, bend left=40] (H-2);
+      \path (H-2) edge[thick,orange,arrows={-stealth}, bend left=40] (H-3);
+      
+      \path (H2-3) edge[thick,orange,dashed,arrows={-stealth}, bend left=40] (H2-2);
+      \path (H2-2) edge[thick,orange,dashed,arrows={-stealth}, bend left=40] (H2-1);
+      
+       \path (2H-1) edge[thick,orange,arrows={-stealth}, bend left=40] (2H-2);
+      \path (2H-2) edge[thick,orange,arrows={-stealth}, bend left=40] (2H-3);
+      
+      \path (2H2-3) edge[thick,orange,dashed,arrows={-stealth}, bend left=40] (2H2-2);
+      \path (2H2-2) edge[thick,orange,dashed,arrows={-stealth}, bend left=40] (2H2-1);
+      
+       \path (3H-1) edge[thick,orange,arrows={-stealth}, bend left=40] (3H-2);
+      \path (3H-2) edge[thick,orange,arrows={-stealth}, bend left=40] (3H-3);
+      
+      \path (3H2-3) edge[thick,orange,dashed,arrows={-stealth}, bend left=40] (3H2-2);
+      \path (3H2-2) edge[thick,orange,dashed,arrows={-stealth}, bend left=40] (3H2-1);
+      
+      \node[annot]  at (1.5,-\layersep * 4) {$\bm{\mathbf{x}}$};
+      \node[annot]  at (1.5,-\layersep * 3) {$\bm{\mathbf{h}}^{(1)}$};
+       \node[annot]  at (1.5,-\layersep * 2) {$\bm{\mathbf{h}}^{(2)}$};
+       \node[annot]  at (1.5,-\layersep) {$\bm{\mathbf{h}}^{(3)}$};
+       \node[annot]  at (1.5,0) {$\bm{\mathbf{y}}$};
+      
+\end{tikzpicture}
+\caption{\kai 深度双向循环神经网络}\label{fig:deepRNN}
+\end{figure}
+
+\subsection{梯度消失问题}
+
+在 {\crimson RNN} 中，仍然存在梯度消失问题{\kai \cite{pascanu2012difficulty}}。为了便于分析，与之前稍有不同，我们假设隐藏层状态为：
+\begin{equation}
+\bm{h}_t = \bm{U}\bm{x}_t + \bm{W}\bm{\sigma}(\bm{h}_{t-1}) + \bm{b} \quad (t = 1,2,\ldots,T)
+\end{equation}
+
+记$\:\theta\:$代表所有参数$\:\bm{U},\bm{W},\bm{b}$，损失函数$\:\mathcal{L} =  \sum_{t=1}^{T} \mathcal{L}_t(\bm{h}_t)$，则：
+\begin{equation}
+\frac{\partial \mathcal{L}}{\partial \theta} = \sum_{t=1}^T \frac{\partial \mathcal{L}_t}{\partial \theta}
+\end{equation}
+\begin{equation}
+\frac{\partial \mathcal{L}_t}{\partial \theta} = \sum_{k=1}^t \left( \frac{\partial \mathcal{L}_t}{\partial \bm{h}_t} \frac{\partial \bm{h}_t}{\partial \bm{h}_k} \frac{\partial^{+} \bm{h}_k}{\partial \theta} \right)
+\end{equation}
+\begin{equation}
+\frac{\partial \bm{h}_t}{\partial \bm{h}_k} = \prod_{i=k+1}^t\frac{\partial \bm{h}_i}{\partial \bm{h}_{i - 1}} = \prod_{i=k+1}^t \bm{W}^{T}\text{\crimson diag}(\bm{\sigma}^{'}(\bm{h}_{i - 1}))
+\end{equation}
+
+由于$\:\sigma^{'}(x) \le \frac{1}{4}\:$，故$\:\left|\left|\text{\crimson diag}(\bm{\sigma}^{'}(\bm{h}_{k}))\right|\right| \le \gamma \in \mathbb{R}$。设$\:\lambda_1\:$是$\:\bm{W}\:$的最大{\hei 奇异值}({\crimson  Singular Value})，接下来证明：如果$\:\lambda_1 < \frac{1}{\gamma}$，那么梯度消失问题就会出现。首先容易知道：
+\begin{equation}
+\forall k, \left|\left|\frac{\partial \bm{h}_{k + 1}}{\partial \bm{h}_{k}}\right|\right| \le \left|\left|\bm{W}^{T}\right|\right|\left|\left|\text{\crimson diag}(\bm{\sigma}^{'}(\bm{h}_{k}))\right|\right| < \frac{1}{\gamma}\gamma < 1
+\end{equation}
+设$\:\eta \in \mathbb{R}\:$满足：$\forall k, \left|\left|\frac{\partial \bm{h}_{k + 1}}{\partial \bm{h}_{k}}\right|\right| \le \eta < 1$。那么：
+\begin{equation}
+\left|\left|\frac{\partial \mathcal{L}_t}{\partial \bm{h}_t}\left(\prod_{i=k}^{t-1}\frac{\partial \bm{h}_{i + 1}}{\partial \bm{h}_{i}}\right)\right|\right| \le \eta^{t-k}\left|\left|\frac{\partial \mathcal{L}_t}{\partial \bm{h}_t}\right|\right|
+\end{equation}
+由于$\:\eta < 1$，故梯度消失问题出现。
+
+在神经网络中用来解决梯度消失问题的办法仍然适用于 {\crimson RNN}，在下文中我们将看到另一种解决该问题的方法。
+
+\begin{figure}
+\centering
+\def\layersep{2.5cm}
+\begin{tikzpicture}[shorten >=1pt,->,draw=black, node distance=\layersep]
+    \tikzstyle{every pin edge}=[<-,shorten <=1pt]
+    \tikzstyle{neuron}=[circle,ultra thick,minimum size=25pt,inner sep=0pt]
+%    \tikzstyle{input neuron}=[neuron,draw=blue!70, fill=blue!20];
+%    \tikzstyle{output neuron}=[neuron,draw=red!70, fill=red!20];
+%    \tikzstyle{hidden neuron}=[neuron,draw=yellow!90, fill=yellow!30];
+    \tikzstyle{input neuron}=[neuron,draw=black];
+    \tikzstyle{output neuron}=[neuron,draw=black];
+    \tikzstyle{hidden neuron}=[neuron,draw=black];
+    \tikzstyle{hide neuron}=[neuron,minimum size=0pt];
+    \tikzstyle{annot} = [text width=4em, text centered]
+    
+   
+
+    % Draw the input layer nodes
+     \node[input neuron] (I-1) at (1 * 2.5,-\layersep * 2) {$\bm{x}_{1}$};
+     \node[input neuron,draw=red] (I-2) at (2 * 2.5,-\layersep * 2) {$\color{red} \bm{x}_{2}$};
+     \node[input neuron] (I-3) at (3 * 2.5,-\layersep * 2) {$\bm{x}_{3}$};
+     \node[hide neuron] (I-4) at (3.75 * 2.5,-\layersep * 2) {$\cdots$};
+     \node[input neuron] (I-5) at (4.5 * 2.5,-\layersep * 2) {$\bm{x}_{t-1}$};
+     \node[input neuron] (I-6) at (5.5 * 2.5,-\layersep * 2) {$\bm{x}_{t}$};
+     \node[input neuron] (I-7) at (6.5 * 2.5,-\layersep * 2) {$\bm{x}_{t+1}$};
+
+	\node[hidden neuron] (H-1) at (1 * 2.5,-\layersep) {$\bm{h}_{1}$};
+	\node[hidden neuron,draw=red] (H-2) at (2 * 2.5,-\layersep) {$\color{red} \bm{h}_2$};
+	\node[hidden neuron,draw=red] (H-3) at (3 * 2.5,-\layersep) {$\color{red} \bm{h}_{3}$};
+	\node[hidden neuron,draw=red] (H-5) at (4.5 * 2.5,-\layersep) {$\color{red} \bm{h}_{t-1}$};
+	\node[hidden neuron,draw=red] (H-6) at (5.5 * 2.5,-\layersep) {$\color{red} \bm{h}_t$};
+	\node[hidden neuron] (H-7) at (6.5 * 2.5,-\layersep) {$\bm{h}_{t+1}$};
+    % Draw the output layer node
+ 
+	\node[output neuron] (O-1) at (1 * 2.5,0) {$\hat{\bm{y}}_{1}$};
+	\node[output neuron] (O-2) at (2 * 2.5,0) {$\hat{\bm{y}}_{2}$};
+	\node[output neuron] (O-3) at (3 * 2.5,0) {$\hat{\bm{y}}_{3}$};
+	\node[hide neuron] (O-4) at (3.75 * 2.5,0) {$\cdots$};
+	\node[output neuron] (O-5) at (4.5 * 2.5,0) {$\hat{\bm{y}}_{t-1}$};
+	\node[output neuron,draw=red] (O-6) at (5.5 * 2.5,0) {$\color{red} \hat{\bm{y}}_{t}$};
+	\node[output neuron] (O-7) at (6.5 * 2.5,0) {$\hat{\bm{y}}_{t+1}$};
+    % Connect every node in the input layer with every node in the
+    % hidden layer.
+     
+    
+    \foreach \source in {1,...,3}
+          \path (I-\source) edge[ultra thick,arrows={-stealth}] node[right] {} (H-\source);
+    \foreach \source in {5,...,7}
+          \path (I-\source) edge[ultra thick,arrows={-stealth}] node[right] {} (H-\source);
+     \foreach \source in {1,...,3}
+          \path (H-\source) edge[ultra thick,arrows={-stealth}] node[left] {} (O-\source);
+     \foreach \source in {5,...,7}
+          \path (H-\source) edge[ultra thick,arrows={-stealth}] node[left] {} (O-\source);
+          
+	  \path (I-2) edge[red,ultra thick,arrows={-stealth}] node[right] {} (H-2);
+	  \path (H-6) edge[red,ultra thick,arrows={-stealth}] node[left] {} (O-6);    
+       
+      \path (H-1) edge[ultra thick,arrows={-stealth}] node[above] {} (H-2);
+      \path (H-2) edge[red,ultra thick,arrows={-stealth}] node[above] {} (H-3);
+      \path (H-3) edge[red,ultra thick,arrows={-stealth}] node[above] {} (H-5);
+      \path (H-5) edge[red,ultra thick,arrows={-stealth}] node[above] {} (H-6);
+      \path (H-6) edge[ultra thick,arrows={-stealth}] node[above] {} (H-7);
+      
+\end{tikzpicture}
+\caption{\kai 循环神经网络中的长期依赖}\label{fig:lstm1}
+\end{figure}
+
+\section{长短期记忆网络}
+
+
+虽然在理论上，传统的 {\crimson RNN} 可以捕捉到长期的依赖，但由于上文中提到的梯度消失问题，使得当$\:T\:$很大时，{\crimson RNN} 的训练十分困难。在实际问题中，却又常常会需要这种长期依赖(图 {\kai \ref{fig:lstm1}})，比如在{\hei 机器翻译}({\crimson Machine Translation, MT})，在一种语言中的前几个词翻译成另一种语言后却在最后面。
+
+长短期记忆网络(下文简称 {\crimson LSTM}) 就是为了解决这个问题而提出的一种模型。{\crimson LSTM} 在$\:${\kai 1997}$\:$年首次提出，随着深度学习的浪潮再度进入人们的视野，在自然语言处理的各项任务上有着广泛的应用，并且衍生了诸多{\hei 变体}({\crimson Variants})。实际中使用的 {\crimson RNN} 一般都是 {\crimson LSTM}。
+
+\begin{figure}[hb]
+\centering
+\def\layersep{2.5cm}
+\def\cellsep{2cm}
+\begin{tikzpicture}[shorten >=1pt,->,draw=black, node distance=\layersep]
+    \tikzstyle{every pin edge}=[<-,shorten <=1pt]
+    \tikzstyle{neuron}=[circle,ultra thick,minimum size=25pt,inner sep=0pt]
+%    \tikzstyle{input neuron}=[neuron,draw=blue!70, fill=blue!20];
+%    \tikzstyle{output neuron}=[neuron,draw=red!70, fill=red!20];
+%    \tikzstyle{hidden neuron}=[neuron,draw=yellow!90, fill=yellow!30];
+    \tikzstyle{input neuron}=[neuron,draw=black];
+    \tikzstyle{output neuron}=[neuron,draw=black];
+    \tikzstyle{hidden neuron}=[neuron,draw=black];
+    \tikzstyle{hide neuron}=[neuron,minimum size=0pt];
+    \tikzstyle{annot} = [text width=4em, text centered]
+    
+    \node[rectangle,draw=black,ultra thick,fill=black!20,rounded corners=5pt,minimum width=2.2cm,minimum height=1.1cm] (rect) {\hei 黑箱};
+      
+   % \node[hidden neuron] (H)  {$\bm{h}_t$}; 
+    \node[input neuron, below of=rect] (I)  {$\bm{x}_t$};
+    \node[output neuron, above of=rect] (O) {$\hat{\bm{y}}_t$};
+    \node[hidden neuron, left of=rect, node distance=2.8cm] (h1)  {$\bm{h}_{t-1}$};
+    \node[hidden neuron, right of=rect, node distance=2.8cm] (h2) {$\bm{h}_{t}$};
+    \path (I) edge[ultra thick,arrows={-stealth}] (rect);
+    \path (rect) edge[ultra thick,arrows={-stealth}] (O); 
+    \path (h1) edge[ultra thick,arrows={-stealth}] (rect);
+    \path (rect) edge[ultra thick,arrows={-stealth}] (h2);    
+    
+\end{tikzpicture}
+\caption{\kai 循环神经网络“黑箱”模型}\label{fig:lstm2}
+\end{figure}
+
+为了更好的理解 {\crimson LSTM}，我们先从另一个角度来审视 {\crimson RNN}。如图 {\kai \ref{fig:lstm2}} 所示，在每一时刻，给定当前输入$\:\bm{x}_t\:$和上一时刻隐藏层状态$\:\bm{h}_{t-1}$，经过一定计算，输出$\:\hat{\bm{y}}_t\:$以及更新过的隐藏层状态$\:\bm{h}_{t-1}$。可以把这一计算过程看成“黑箱”，而不去关心具体的计算过程，无非是进行一些线性或非线性变换。
+
+{\crimson LSTM} 与传统 {\crimson RNN} 所不同的正是其中的计算过程。
+
+\subsection{模型}
+
+接下来我们来仔细看看，在 {\crimson LSTM} 里，“黑箱”里的具体计算过程究竟是怎样的。我们仍然用$\:\bm{\mathbf{x}}=(\bm{x}_1,\bm{x}_2,\ldots,\bm{x}_T),\, \bm{x}_t \in \mathbb{R}^n\:$表示输入序列，用$\:\bm{\mathbf{h}}=(\bm{h}_1,\bm{h}_2,\ldots,\bm{h}_T),\, \bm{h}_t \in \mathbb{R}^k\:$来表示隐藏层单元序列，用$\:\hat{\bm{\mathbf{y}}}=(\hat{\bm{y}}_1,\hat{\bm{y}}_2,\ldots,\hat{\bm{y}}_T),\, \hat{\bm{y}}_t \in \mathbb{R}^m\:$来表示输出序列。在 {\crimson LSTM} 里，还包含新增的一组{\hei 记忆单元}({\crimson Memory Unit})序列$\:\bm{\mathbf{c}}=(\bm{c}_1,\bm{c}_2,\ldots,\bm{c}_T),\, \bm{c}_t \in \mathbb{R}^k$，单独用来存储信息。{\crimson LSTM} 创造性地引入了{\hei 门机制}({\crimson Gating Mechanism})，通过三个门来分别控制当前的信息是否要进入记忆单元，记忆单元中的哪些信息需要忘记掉，以及在输出时取出有用的信息。
+
+图 {\kai \ref{fig:lstm3}} 展示了 {\crimson LSTM} 里“黑箱”的具体计算过程\footnote{\hei 为了保持美观，{\crimson softmax} 在图中被表示成了 {\crimson max}。}，相比传统的 {\crimson RNN} 要复杂不少，我们一步步来看。
+
+\begin{figure}
+\centering
+\def\layersep{2cm}
+\def\cellsep{1.5cm}
+\def\cellsepx{1.8cm}
+\begin{tikzpicture}[shorten >=1pt,->,draw=black, node distance=\layersep]
+    \tikzstyle{every pin edge}=[<-,shorten <=1pt]
+    \tikzstyle{neuron}=[circle,very thick,minimum size=25pt,inner sep=0pt]
+    \tikzstyle{ops}=[circle,very thick,minimum size=12pt,inner sep=0pt,draw=black,fill=pink!90]
+    \tikzstyle{func}=[rectangle,very thick,minimum width=6pt,minimum height=14pt,draw=black,fill=yellow!50]
+%    \tikzstyle{input neuron}=[neuron,draw=blue!70, fill=blue!20];
+%    \tikzstyle{output neuron}=[neuron,draw=red!70, fill=red!20];
+%    \tikzstyle{hidden neuron}=[neuron,draw=yellow!90, fill=yellow!30];
+    \tikzstyle{input neuron}=[neuron,draw=black];
+    \tikzstyle{output neuron}=[neuron,draw=black];
+    \tikzstyle{hidden neuron}=[neuron,draw=black];
+    \tikzstyle{hide neuron}=[neuron,draw=black,minimum size=0pt];
+    \tikzstyle{hide neuron2}=[neuron,fill=green!15,minimum size=4pt];
+    \tikzstyle{annot} = [text width=4em, text centered]
+   
+   \draw[rounded corners=11pt, draw=black,fill=green!15,very thick,minimum size=5pt] (0, 0) rectangle (\cellsepx * 3.5, \cellsep * 3) {};
+   
+   \node[hide neuron] (hide1) at (\cellsepx * 1.5,\cellsep * 0.5) {};
+   \node[hide neuron] (hide2) at (\cellsepx * 3,\cellsep * 0.5) {};
+     \node[hide neuron2] (hide3) at (\cellsepx * 3,\cellsep * 2.5) {};
+     \node[hide neuron] (hide4) at (\cellsepx * 2,\cellsep * 0.5) {};
+     \node[hide neuron] (hide5) at (\cellsepx * 1,\cellsep * 0.5) {};
+     %\node[hide neuron] (hide6) at (\cellsep * 2,\cellsep * 0.5) {};
+   
+   \node[input neuron,fill=orange!50] (H-1) at (-\cellsepx * 0.45,\cellsep * 0.5) {$\bm{h}_{t-1}$};
+   \node[input neuron,fill=orange!50] (H-2) at (\cellsepx * 4,\cellsep * 0.5) {$\bm{h}_t$};
+   \node[input neuron,fill=red!50] (C-1) at (-\cellsepx * 0.45,\cellsep * 2.5) {$\bm{c}_{t-1}$};
+   \node[input neuron,fill=red!50] (C-2) at (\cellsepx * 4,\cellsep * 2.5) {$\bm{c}_t$};
+    \node[input neuron,fill=blue!40] (X) at (\cellsepx * 0.5,-\cellsep * 0.5) {$\bm{x}_t$};
+   \node[input neuron,fill=violet!35] (H) at (\cellsepx * 3,\cellsep * 3.6) {$\hat{\bm{y}}_t$};
+   
+%   \node[input neuron] (H-1) at (-\cellsepx * 0.5,\cellsep * 0.5) {$\bm{h}_{t-1}$};
+%   \node[input neuron] (H-2) at (\cellsepx * 4,\cellsep * 0.5) {$\bm{h}_t$};
+%   \node[input neuron] (C-1) at (-\cellsepx * 0.5,\cellsep * 2.5) {$\bm{c}_{t-1}$};
+%   \node[input neuron] (C-2) at (\cellsepx * 4,\cellsep * 2.5) {$\bm{c}_t$};
+%   \node[input neuron] (X) at (\cellsepx * 0.5,-\cellsep * 0.5) {$\bm{x}_t$};
+%   \node[input neuron] (H) at (\cellsepx * 3,\cellsep * 3.5) {$\hat{\bm{y}}_t$};
+   
+   \path (C-1) edge[ultra thick,arrows={-stealth}]  (C-2);
+   
+   \node[ops] (multi1) at (\cellsepx * 0.5,\cellsep * 2.5) {$\times$};
+   \node[ops] (plus1) at (\cellsepx * 1.5,\cellsep * 2.5) {$+$};
+   
+   \path (X) edge[ultra thick,arrows={-stealth}]  (multi1);
+   \node[func] (sigma1) at (\cellsepx * 0.5,\cellsep * 1) {\small $\sigma$};
+    
+    \path (\cellsepx * 2.5,\cellsep * 2.5) edge[ultra thick,arrows={-}]  (\cellsepx * 2.5,\cellsep * 0.49);
+     \path (\cellsepx * 2.485,\cellsep * 0.5) edge[ultra thick,arrows={-stealth}]  (H-2);
+    
+    \path (\cellsepx * 1.5,\cellsep * 0.49) edge[ultra thick,arrows={-stealth}]  (plus1);
+    \node[func] (tanh1) at (\cellsepx * 1.5,\cellsep * 1) {\crimson \tiny \textbf{tanh}};
+    \node[ops] (multi2) at (\cellsepx * 1.5,\cellsep * 1.5) {$\times$};
+    
+    \node[ops] (multi3) at (\cellsepx * 2.5,\cellsep * 1.5) {$\times$};
+     \node[func] (tanh2) at (\cellsepx * 2.5,\cellsep * 2) {\crimson \tiny \textbf{tanh}};
+     
+     
+     \path (\cellsepx * 3,\cellsep * 0.49) edge[ultra thick,arrows={-}]  (hide3);
+     \path (hide3) edge[ultra thick,arrows={-stealth}]  (H);
+     
+     \path (H-1) edge[ultra thick,arrows={-}]  (\cellsepx * 2.03,\cellsep * 0.5);
+     
+     \path (\cellsepx * 2,\cellsep * 0.49) edge[ultra thick,arrows={-}]  (\cellsepx * 2,\cellsep * 1.51);
+      \path (\cellsepx * 1.985,\cellsep * 1.5) edge[ultra thick,arrows={-stealth}]  (multi3);
+     \path (\cellsepx * 1,\cellsep * 0.49) edge[ultra thick,arrows={-}]  (\cellsepx * 1,\cellsep * 1.51);
+     \path (\cellsepx * 0.985,\cellsep * 1.5) edge[ultra thick,arrows={-stealth}]  (multi2);
+     
+     \node[func] (sigma2) at (\cellsepx * 1,\cellsep * 1) {\small $\sigma$};
+    \node[func] (sigma3) at (\cellsepx * 2,\cellsep * 1) {\small $\sigma$};
+    \node[func] (max) at (\cellsepx * 3,\cellsep * 1) {\crimson \tiny \textbf{max}};
+  
+\end{tikzpicture}
+\caption{\kai 长短期记忆网络}\label{fig:lstm3}
+\end{figure}
+
+首先是{\hei 遗忘门}({\crimson Forget Gate})。在$\:t\:$时刻，遗忘门用来把之前储存在$\:\bm{c}_{t-1}\:$里，但之后再也用不着的信息“遗忘”掉：
+\begin{equation}
+\bm{f}_t = \bm{\sigma}(\bm{W}_{xf}\bm{x}_t + \bm{W}_{hf}\bm{h}_{t-1} + \bm{b}_f)
+\end{equation}
+接着是{\hei 输入门}({\crimson Input Gate})。输入门用来控制把当前的哪些信息储存到记忆单元中：
+\begin{equation}
+\bm{i}_t = \bm{\sigma}(\bm{W}_{xi}\bm{x}_t + \bm{W}_{hi}\bm{h}_{t-1} + \bm{b}_i)
+\end{equation}
+当然我们还需要当前的输入产生信息：
+\begin{equation}
+\bm{\tilde{c}}_t = \textbf{\crimson tanh}(\bm{W}_{xc}\bm{x}_t + \bm{W}_{hc}\bm{h}_{t-1} + \bm{b}_c)
+\end{equation}
+接下来我们就可以通过遗忘门和输入门的控制来更新记忆单元：
+\begin{equation}
+\bm{c}_t = \bm{f}_t \odot \bm{c}_{t - 1} + \bm{i}_t \odot \bm{\tilde{c}}_t
+\end{equation}
+记忆更新完成后，通过{\hei 输出门}({\crimson Output Gate})把对当前判断有用的信息取出来，更新隐藏层状态：
+\begin{align}
+\bm{o}_t &= \bm{\sigma}(\bm{W}_{xo}\bm{x}_t + \bm{W}_{ho}\bm{h}_{t-1} + \bm{b}_o) \\
+\bm{h}_t &= \bm{o}_t \odot \textbf{\crimson tanh}(\bm{c}_{t})
+\end{align}
+然后就可以输出了：
+\begin{equation}
+\hat{\bm{y}}_t = \textbf{\crimson softmax}(\bm{W}_{hy}\bm{h}_t)
+\end{equation}
+这样，我们就完成了“黑箱”里的整个计算过程。
+
+\subsection{变体}
+
+{\crimson LSTM} 衍生了诸多变体，这里介绍三种。
+
+\begin{figure}
+\centering
+\def\layersep{2cm}
+\def\cellsep{1.5cm}
+\def\cellsepx{1.9cm}
+\begin{tikzpicture}[shorten >=1pt,->,draw=black, node distance=\layersep]
+    \tikzstyle{every pin edge}=[<-,shorten <=1pt]
+    \tikzstyle{neuron}=[circle,very thick,opacity=0.3,minimum size=25pt,inner sep=0pt]
+    \tikzstyle{ops}=[circle,draw opacity=0.3,very thick,minimum size=12pt,inner sep=0pt,draw=black,fill=pink!90]
+    \tikzstyle{func}=[rectangle,draw opacity=0.3,very thick,minimum width=6pt,minimum height=14pt,draw=black,fill=yellow!50]
+%    \tikzstyle{input neuron}=[neuron,draw=blue!70, fill=blue!20];
+%    \tikzstyle{output neuron}=[neuron,draw=red!70, fill=red!20];
+%    \tikzstyle{hidden neuron}=[neuron,draw=yellow!90, fill=yellow!30];
+    \tikzstyle{input neuron}=[neuron,draw=black];
+    \tikzstyle{output neuron}=[neuron,draw=black];
+    \tikzstyle{hidden neuron}=[neuron,draw=black];
+    \tikzstyle{hide neuron}=[neuron,draw=black,minimum size=0pt];
+    \tikzstyle{hide neuron2}=[neuron,fill=green!15,minimum size=4pt];
+    \tikzstyle{annot} = [text width=4em, text centered]
+   
+   
+   \node[hide neuron] (hide1) at (\cellsepx * 1.5,\cellsep * 0.5) {};
+   \node[hide neuron] (hide2) at (\cellsepx * 3,\cellsep * 0.5) {};
+     \node[hide neuron2] (hide3) at (\cellsepx * 3,\cellsep * 2.5) {};
+     \node[hide neuron] (hide4) at (\cellsepx * 2,\cellsep * 0.5) {};
+     \node[hide neuron] (hide5) at (\cellsepx * 1,\cellsep * 0.5) {};
+     %\node[hide neuron] (hide6) at (\cellsep * 2,\cellsep * 0.5) {};
+   
+   \node[input neuron,fill=orange!50] (H-1) at (-\cellsepx * 0.45,\cellsep * 0.5) {$\bm{h}_{t-1}$};
+   \node[input neuron,fill=orange!50] (H-2) at (\cellsepx * 4,\cellsep * 0.5) {$\bm{h}_t$};
+   \node[input neuron,fill=red!50] (C-1) at (-\cellsepx * 0.45,\cellsep * 2.5) {$\bm{c}_{t-1}$};
+   \node[input neuron,fill=red!50] (C-2) at (\cellsepx * 4,\cellsep * 2.5) {$\bm{c}_t$};
+    \node[input neuron,fill=blue!40] (X) at (\cellsepx * 0.5,-\cellsep * 0.5) {$\bm{x}_t$};
+   \node[input neuron,fill=violet!35] (H) at (\cellsepx * 3,\cellsep * 3.6) {$\hat{\bm{y}}_t$};
+   
+%   \node[input neuron] (H-1) at (-\cellsepx * 0.5,\cellsep * 0.5) {$\bm{h}_{t-1}$};
+%   \node[input neuron] (H-2) at (\cellsepx * 4,\cellsep * 0.5) {$\bm{h}_t$};
+%   \node[input neuron] (C-1) at (-\cellsepx * 0.5,\cellsep * 2.5) {$\bm{c}_{t-1}$};
+%   \node[input neuron] (C-2) at (\cellsepx * 4,\cellsep * 2.5) {$\bm{c}_t$};
+%   \node[input neuron] (X) at (\cellsepx * 0.5,-\cellsep * 0.5) {$\bm{x}_t$};
+%   \node[input neuron] (H) at (\cellsepx * 3,\cellsep * 3.5) {$\hat{\bm{y}}_t$};
+   
+   \path (C-1) edge[ultra thick,arrows={-stealth},opacity=0.3]  (C-2);
+   
+   \node[ops] (multi1) at (\cellsepx * 0.5,\cellsep * 2.5) {$\times$};
+   \node[ops] (plus1) at (\cellsepx * 1.5,\cellsep * 2.5) {$+$};
+   
+   \path (X) edge[ultra thick,arrows={-stealth},opacity=0.3]  (multi1);
+   \node[func] (sigma1) at (\cellsepx * 0.5,\cellsep * 1) {\small $\sigma$};
+    
+    \path (\cellsepx * 2.5,\cellsep * 2.5) edge[ultra thick,arrows={-},opacity=0.3]  (\cellsepx * 2.5,\cellsep * 0.49);
+     \path (\cellsepx * 2.485,\cellsep * 0.5) edge[ultra thick,arrows={-stealth},opacity=0.3]  (H-2);
+    
+    \path (\cellsepx * 1.5,\cellsep * 0.49) edge[ultra thick,arrows={-stealth},opacity=0.3]  (plus1);
+    \node[func] (tanh1) at (\cellsepx * 1.5,\cellsep * 1) {\crimson \tiny \textbf{tanh}};
+    \node[ops] (multi2) at (\cellsepx * 1.5,\cellsep * 1.5) {$\times$};
+    
+    \node[ops] (multi3) at (\cellsepx * 2.5,\cellsep * 1.5) {$\times$};
+     \node[func] (tanh2) at (\cellsepx * 2.5,\cellsep * 2) {\crimson \tiny \textbf{tanh}};
+     
+     
+     \path (\cellsepx * 3,\cellsep * 0.49) edge[ultra thick,arrows={-},opacity=0.3]  (hide3);
+     \path (hide3) edge[ultra thick,arrows={-stealth},opacity=0.3]  (H);
+     
+     \path (H-1) edge[ultra thick,arrows={-},opacity=0.3]  (\cellsepx * 2.03,\cellsep * 0.5);
+     
+     \path (\cellsepx * 2,\cellsep * 0.49) edge[ultra thick,arrows={-},opacity=0.3]  (\cellsepx * 2,\cellsep * 1.51);
+      \path (\cellsepx * 1.985,\cellsep * 1.5) edge[ultra thick,arrows={-stealth},opacity=0.3]  (multi3);
+     \path (\cellsepx * 1,\cellsep * 0.49) edge[ultra thick,arrows={-},opacity=0.3]  (\cellsepx * 1,\cellsep * 1.51);
+     \path (\cellsepx * 0.985,\cellsep * 1.5) edge[ultra thick,arrows={-stealth},opacity=0.3]  (multi2);
+     
+     \node[func] (sigma2) at (\cellsepx * 1,\cellsep * 1) {\small $\sigma$};
+    \node[func] (sigma3) at (\cellsepx * 2,\cellsep * 1) {\small $\sigma$};
+    \node[func] (max) at (\cellsepx * 3,\cellsep * 1) {\crimson \tiny \textbf{max}};
+    
+    \draw[rounded corners=11pt, draw=black,fill=green!15,draw opacity=0.3,fill opacity=0.7,very thick,minimum size=5pt] (0, 0) rectangle (\cellsepx * 3.5, \cellsep * 3) {};
+    
+     \path (\cellsepx * 0.25,\cellsep * 2.5) edge[ultra thick,arrows={-}]  (\cellsepx * 0.25,\cellsep * 0.62);
+     \path (\cellsepx * 0.235,\cellsep * 0.65) edge[ultra thick,arrows={-}]  (\cellsepx * 0.983,\cellsep * 0.65);
+     \path (\cellsepx * 0.95,\cellsep * 0.64) edge[ultra thick,arrows={-}]  (\cellsepx * 0.95,\cellsep * 0.86);
+      \path (\cellsepx * 0.45,\cellsep * 0.64) edge[ultra thick,arrows={-}]  (\cellsepx * 0.45,\cellsep * 0.86);
+      
+      \path (\cellsepx * 1.77,\cellsep * 2.5) edge[ultra thick,arrows={-}]  (\cellsepx * 1.77,\cellsep * 0.62);
+      \path (\cellsepx * 1.756,\cellsep * 0.65) edge[ultra thick,arrows={-}]  (\cellsepx * 1.983,\cellsep * 0.65);
+      \path (\cellsepx * 1.95,\cellsep * 0.64) edge[ultra thick,arrows={-}]  (\cellsepx * 1.95,\cellsep * 0.86);
+  
+\end{tikzpicture}
+\caption{\kai 长短期记忆网络变体}\label{fig:lstm4}
+\end{figure}
+
+\begin{figure}
+\centering
+\def\layersep{2cm}
+\def\cellsep{1.5cm}
+\def\cellsepx{1.9cm}
+\begin{tikzpicture}[shorten >=1pt,->,draw=black, node distance=\layersep]
+    \tikzstyle{every pin edge}=[<-,shorten <=1pt]
+    \tikzstyle{neuron}=[circle,very thick,opacity=0.3,minimum size=25pt,inner sep=0pt]
+    \tikzstyle{ops}=[circle,draw opacity=0.3,very thick,minimum size=12pt,inner sep=0pt,draw=black,fill=pink!90]
+    \tikzstyle{func}=[rectangle,draw opacity=0.3,very thick,minimum width=6pt,minimum height=14pt,draw=black,fill=yellow!50]
+%    \tikzstyle{input neuron}=[neuron,draw=blue!70, fill=blue!20];
+%    \tikzstyle{output neuron}=[neuron,draw=red!70, fill=red!20];
+%    \tikzstyle{hidden neuron}=[neuron,draw=yellow!90, fill=yellow!30];
+    \tikzstyle{input neuron}=[neuron,draw=black];
+    \tikzstyle{output neuron}=[neuron,draw=black];
+    \tikzstyle{hidden neuron}=[neuron,draw=black];
+    \tikzstyle{hide neuron}=[neuron,draw=black,minimum size=0pt];
+    \tikzstyle{hide neuron2}=[neuron,fill=green!15,minimum size=4pt];
+    \tikzstyle{annot} = [text width=4em, text centered]
+   
+   
+   \node[hide neuron] (hide1) at (\cellsepx * 1.5,\cellsep * 0.5) {};
+   \node[hide neuron] (hide2) at (\cellsepx * 3,\cellsep * 0.5) {};
+     \node[hide neuron2] (hide3) at (\cellsepx * 3,\cellsep * 2.5) {};
+     \node[hide neuron] (hide4) at (\cellsepx * 2,\cellsep * 0.5) {};
+     \node[hide neuron] (hide5) at (\cellsepx * 1,\cellsep * 0.5) {};
+     %\node[hide neuron] (hide6) at (\cellsep * 2,\cellsep * 0.5) {};
+   
+   \node[input neuron,fill=orange!50] (H-1) at (-\cellsepx * 0.45,\cellsep * 0.5) {$\bm{h}_{t-1}$};
+   \node[input neuron,fill=orange!50] (H-2) at (\cellsepx * 4,\cellsep * 0.5) {$\bm{h}_t$};
+   \node[input neuron,fill=red!50] (C-1) at (-\cellsepx * 0.45,\cellsep * 2.5) {$\bm{c}_{t-1}$};
+   \node[input neuron,fill=red!50] (C-2) at (\cellsepx * 4,\cellsep * 2.5) {$\bm{c}_t$};
+    \node[input neuron,fill=blue!40] (X) at (\cellsepx * 0.5,-\cellsep * 0.5) {$\bm{x}_t$};
+   \node[input neuron,fill=violet!35] (H) at (\cellsepx * 3,\cellsep * 3.6) {$\hat{\bm{y}}_t$};
+   
+%   \node[input neuron] (H-1) at (-\cellsepx * 0.5,\cellsep * 0.5) {$\bm{h}_{t-1}$};
+%   \node[input neuron] (H-2) at (\cellsepx * 4,\cellsep * 0.5) {$\bm{h}_t$};
+%   \node[input neuron] (C-1) at (-\cellsepx * 0.5,\cellsep * 2.5) {$\bm{c}_{t-1}$};
+%   \node[input neuron] (C-2) at (\cellsepx * 4,\cellsep * 2.5) {$\bm{c}_t$};
+%   \node[input neuron] (X) at (\cellsepx * 0.5,-\cellsep * 0.5) {$\bm{x}_t$};
+%   \node[input neuron] (H) at (\cellsepx * 3,\cellsep * 3.5) {$\hat{\bm{y}}_t$};
+   
+   \path (C-1) edge[ultra thick,arrows={-stealth},opacity=0.3]  (C-2);
+   
+   \node[ops] (multi1) at (\cellsepx * 0.5,\cellsep * 2.5) {$\times$};
+   \node[ops] (plus1) at (\cellsepx * 1.5,\cellsep * 2.5) {$+$};
+   
+   \path (X) edge[ultra thick,arrows={-stealth},opacity=0.3]  (multi1);
+   \node[func] (sigma1) at (\cellsepx * 0.5,\cellsep * 1) {\small $\sigma$};
+    
+    \path (\cellsepx * 2.5,\cellsep * 2.5) edge[ultra thick,arrows={-},opacity=0.3]  (\cellsepx * 2.5,\cellsep * 0.49);
+     \path (\cellsepx * 2.485,\cellsep * 0.5) edge[ultra thick,arrows={-stealth},opacity=0.3]  (H-2);
+    
+    \path (\cellsepx * 1.5,\cellsep * 0.49) edge[ultra thick,arrows={-stealth},opacity=0.3]  (plus1);
+    \node[func] (tanh1) at (\cellsepx * 1.5,\cellsep * 1) {\crimson \tiny \textbf{tanh}};
+    \node[ops] (multi2) at (\cellsepx * 1.5,\cellsep * 1.5) {$\times$};
+    
+    \node[ops] (multi3) at (\cellsepx * 2.5,\cellsep * 1.5) {$\times$};
+     \node[func] (tanh2) at (\cellsepx * 2.5,\cellsep * 2) {\crimson \tiny \textbf{tanh}};
+     
+     
+     \path (\cellsepx * 3,\cellsep * 0.49) edge[ultra thick,arrows={-},opacity=0.3]  (hide3);
+     \path (hide3) edge[ultra thick,arrows={-stealth},opacity=0.3]  (H);
+     
+     \path (H-1) edge[ultra thick,arrows={-},opacity=0.3]  (\cellsepx * 2.03,\cellsep * 0.5);
+     
+     \path (\cellsepx * 2,\cellsep * 0.49) edge[ultra thick,arrows={-},opacity=0.3]  (\cellsepx * 2,\cellsep * 1.51);
+      \path (\cellsepx * 1.985,\cellsep * 1.5) edge[ultra thick,arrows={-stealth},opacity=0.3]  (multi3);
+    % \path (\cellsepx * 1,\cellsep * 0.49) edge[ultra thick,arrows={-},opacity=0.3]  (\cellsepx * 1,\cellsep * 1.51);
+     %\path (\cellsepx * 0.985,\cellsep * 1.5) edge[ultra thick,arrows={-stealth},opacity=0.3]  (multi2);
+     
+    % \node[func] (sigma2) at (\cellsepx * 1,\cellsep * 1) {\small $\sigma$};
+    \node[func] (sigma3) at (\cellsepx * 2,\cellsep * 1) {\small $\sigma$};
+    \node[func] (max) at (\cellsepx * 3,\cellsep * 1) {\crimson \tiny \textbf{max}};
+    
+    \draw[rounded corners=11pt, draw=black,fill=green!15,draw opacity=0.3,fill opacity=0.7,very thick,minimum size=5pt] (0, 0) rectangle (\cellsepx * 3.5, \cellsep * 3) {};
+    
+    \path (sigma1) edge[ultra thick,arrows={-stealth}]  (multi1);     
+     \path (\cellsepx * 0.5,\cellsep * 1.5) edge[ultra thick,arrows={-stealth}]  (multi2); 
+     \node[ops,draw opacity=1,fill=pink] (minus) at (\cellsepx * 1,\cellsep * 1.5) {\scriptsize $1-$};
+    
+  
+\end{tikzpicture}
+\caption{\kai 长短期记忆网络变体2}\label{fig:lstm5}
+\end{figure}
+
+
+\begin{figure}
+\centering
+\def\layersep{2cm}
+\def\cellsep{1.5cm}
+\def\cellsepx{1.9cm}
+\begin{tikzpicture}[shorten >=1pt,->,draw=black, node distance=\layersep]
+    \tikzstyle{every pin edge}=[<-,shorten <=1pt]
+    \tikzstyle{neuron}=[circle,very thick,minimum size=25pt,inner sep=0pt]
+    \tikzstyle{ops}=[circle,very thick,minimum size=12pt,inner sep=0pt,draw=black,fill=pink!90]
+    \tikzstyle{func}=[rectangle,very thick,minimum width=6pt,minimum height=14pt,draw=black,fill=yellow!50]
+%    \tikzstyle{input neuron}=[neuron,draw=blue!70, fill=blue!20];
+%    \tikzstyle{output neuron}=[neuron,draw=red!70, fill=red!20];
+%    \tikzstyle{hidden neuron}=[neuron,draw=yellow!90, fill=yellow!30];
+    \tikzstyle{input neuron}=[neuron,draw=black];
+    \tikzstyle{output neuron}=[neuron,draw=black];
+    \tikzstyle{hidden neuron}=[neuron,draw=black];
+    \tikzstyle{hide neuron}=[neuron,draw=black,minimum size=0pt];
+    \tikzstyle{hide neuron2}=[neuron,fill=green!15,minimum size=3pt];
+    \tikzstyle{annot} = [text width=4em, text centered]
+   
+   \draw[rounded corners=11pt, draw=black, fill=green!15, very thick,minimum size=5pt] (0, 0) rectangle (\cellsepx * 3.5, \cellsep * 3) {};
+   
+%   \node[hide neuron] (hide1) at (\cellsep * 1.5,\cellsep * 0.5) {};
+%   \node[hide neuron] (hide2) at (\cellsep * 3,\cellsep * 0.5) {};
+%     \node[hide neuron] (hide4) at (\cellsep * 2,\cellsep * 0.5) {};
+%     \node[hide neuron] (hide5) at (\cellsep * 1,\cellsep * 0.5) {};
+%     %\node[hide neuron] (hide6) at (\cellsep * 2,\cellsep * 0.5) {};
+ 	\node[hide neuron2] (hide) at (\cellsepx * 1,\cellsep * 0.40) {};
+%   
+   \node[input neuron,fill=orange!50] (C-1) at (-\cellsepx * 0.5,\cellsep * 2.2) {$\bm{h}_{t-1}$};
+   \node[input neuron,fill=orange!50] (C-2) at (\cellsepx * 4.05,\cellsep * 2.2) {$\bm{h}_t$};
+    \node[input neuron,fill=blue!40] (X) at (\cellsepx * 0.5,-\cellsep * 0.6) {$\bm{x}_t$};
+   \node[input neuron,fill=violet!35] (H) at (\cellsepx * 3,\cellsep * 3.7) {$\hat{\bm{y}}_t$};
+   
+   \path (C-1) edge[ultra thick,arrows={-stealth}]  (C-2);
+  
+   \node[ops] (multi1) at (\cellsepx * 2,\cellsep * 2.2) {$\times$};
+   \node[ops] (plus1) at (\cellsepx * 2.5,\cellsep * 2.2) {$+$};
+   \path (\cellsepx * 3,\cellsep * 2.2) edge[ultra thick,arrows={-stealth}]  (H);
+   \path (X) edge[ultra thick,arrows={-}]  (\cellsepx * 0.5,\cellsep * 2.21);
+    
+   \path (\cellsepx * 0.5,\cellsep * 0.2) edge[ultra thick,arrows={-}]  (\cellsepx * 2.531,\cellsep * 0.2);
+   
+   \path (\cellsepx * 2.5,\cellsep * 0.19) edge[ultra thick,arrows={-stealth}]  (plus1);
+   \node[func] (tanh1) at (\cellsepx * 2.5,\cellsep * 0.7) {\crimson \tiny tanh};
+   \node[ops] (multi2) at (\cellsepx * 2.5,\cellsep * 1.2) {$\times$};
+   
+    \path (\cellsepx * 2,\cellsep * 0.40) edge[ultra thick,arrows={-stealth}]  (multi1);
+    \node[func] (sigma2) at (\cellsepx * 2.0,\cellsep * 0.7) {\small $\sigma$};
+    \node[ops] (minus) at (\cellsepx * 2.0,\cellsep * 1.58) {\scriptsize $1-$};
+    
+    \path (\cellsepx * 2,\cellsep * 1.2) edge[ultra thick,arrows={-stealth}]  (multi2);
+     
+     \path (\cellsepx * 0.5,\cellsep * 0.40) edge[ultra thick,arrows={-}]  (\cellsepx * 2.033,\cellsep * 0.40);
+     \path (\cellsepx * 1,\cellsep * 2.2) edge[ultra thick,arrows={-}]  (hide);
+     \path (hide) edge[ultra thick,arrows={-}]  (\cellsepx * 1,\cellsep * 0.19);
+     
+     \node[ops] (multi3) at (\cellsepx * 1,\cellsep * 1.2) {$\times$};
+     
+     \path (\cellsepx * 1.5,\cellsep * 0.40) edge[ultra thick,arrows={-}]  (\cellsepx * 1.5,\cellsep * 1.21);
+      \node[func] (sigma1) at (\cellsepx * 1.5,\cellsep * 0.7) {\small $\sigma$};
+       \path (\cellsepx * 1.515,\cellsep * 1.2) edge[ultra thick,arrows={-stealth}]  (multi3);
+       
+       \node[func] (max) at (\cellsepx * 3,\cellsep * 2.6) {\crimson \tiny \textbf{max}};
+     
+\end{tikzpicture}
+\caption{\kai 门循环单元}
+\end{figure}
+
+%\section{记忆机制}
+%\section{注意力机制}
+\section{应用}
+\crimson
+\bibliographystyle{unsrt}
+\bibliography{reference.bib} 
+
+\end{document}
